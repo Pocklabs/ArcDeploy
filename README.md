@@ -5,18 +5,19 @@
 > **This project is currently under active development and testing. While the configurations are functional, we're still troubleshooting deployment issues and improving compatibility.**
 > 
 > **Current Status:**
-> - ✅ Docker-based configuration (`standard-docker.yaml`) - **Recommended**
+> - 🔄 Docker-based configuration (`standard-docker.yaml`) - **Being debugged**
 > - 🔄 Podman configuration (`standard.yaml`) - Known compatibility issues
-> - 🔄 Native installation (`native-install.yaml`) - Under testing
+> - 🔄 Native installation (`native-install.yaml`) - **Testing in progress**
 > - 🔄 ARM server compatibility - Known issues, use x86 servers
 > - 📝 Documentation being refined based on real-world testing
 > 
 > **Known Issues:**
 > - Cloud-init may not execute on ARM-based Hetzner servers
-> - Podman compatibility issues with Arcblock Docker images
+> - Container compatibility issues with Arcblock images (both Docker & Podman)
 > - External script downloads may fail in some regions
+> - Arcblock image availability and authentication issues
 > 
-> **Recommended Approach:** Use `standard-docker.yaml` on x86 servers (CX31+)
+> **Recommended Approach:** Try `native-install.yaml` for direct installation without containers
 > 
 > **Use at your own risk for production deployments.** We recommend testing thoroughly in a development environment first.
 > 
@@ -94,19 +95,19 @@ ArcDeploy/
 
 ## 🎯 Deployment Options
 
-### Option 1: Docker-Based (Recommended ✅)
-**File:** `cloud-init/standard-docker.yaml` (11.3 KB)
-- ✅ **Docker + docker-compose** (proven compatibility)
-- ✅ **Most reliable** - works with all Arcblock images
-- ✅ **Production tested** - standard container runtime
-- ✅ **Easy debugging** - familiar Docker commands
-
-### Option 2: Native Installation (Container-Free)
+### Option 1: Native Installation (Currently Testing 🔄)
 **File:** `cloud-init/native-install.yaml` (11.0 KB)
-- ✅ **No containers** - direct Node.js installation
-- ✅ **Maximum performance** - no container overhead
-- ✅ **Nginx proxy** included for web access
-- ⚠️ **Under testing** - newer approach
+- 🔄 **No containers** - direct Node.js installation
+- 🔄 **Maximum performance** - no container overhead
+- 🔄 **Nginx proxy** included for web access
+- 🔄 **Under active testing** - most promising approach
+
+### Option 2: Docker-Based (Known Issues ⚠️)
+**File:** `cloud-init/standard-docker.yaml` (11.3 KB)
+- ⚠️ **Container issues** - Arcblock image compatibility problems
+- ⚠️ **Image availability** - may require authentication or different image
+- 🔄 **Being debugged** - Docker setup and image issues
+- 🔄 **Standard approach** - but having deployment problems
 
 ### Option 3: Podman-Based (Known Issues ⚠️)
 **File:** `cloud-init/standard.yaml` (4.7 KB)
