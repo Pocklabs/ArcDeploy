@@ -1,0 +1,77 @@
+# ArcDeploy .gitignore
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# SSH keys (never commit these!)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.pub
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.vim/
+.nvim/
+
+# Cloud-init customized files
+cloud-init/my-*.yaml
+cloud-init/custom-*.yaml
+cloud-init/*-customized.yaml
+
+# API tokens and secrets
+*token*
+*secret*
+*credential*
+hetzner-api-token.txt
+
+# Backup files
+*.backup
+backup/
+backups/
+
+# Test files
+test-*.yaml
+test-*.sh
+testing/
+
+# Local configuration
+config.local.*
+local-config.*
+
+# Documentation builds
+docs/_build/
+docs/site/
+
+# Archive files
+*.tar.gz
+*.zip
+*.rar
+
+# Runtime files
+*.pid
+*.sock

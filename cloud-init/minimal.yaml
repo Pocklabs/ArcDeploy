@@ -1,0 +1,30 @@
+#cloud-config
+
+users:
+  - name: arcblock
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com
+
+packages:
+  - curl
+  - wget
+
+package_update: true
+package_upgrade: true
+
+runcmd:
+  - curl -fsSL https://raw.githubusercontent.com/pocklabs/blocklet-server-cloud-init/main/scripts/setup.sh | bash
+  - reboot
+
+timezone: UTC
+hostname: blocklet-server
+
+final_message: |
+  ArcDeploy: Blocklet Server setup initiated!
+  SSH: ssh -p 2222 arcblock@$INSTANCE_ID (after reboot)
+  Web: http://$INSTANCE_ID:8089 (after setup completes)
+  
+  For support: https://github.com/pocklabs/blocklet-server-cloud-init

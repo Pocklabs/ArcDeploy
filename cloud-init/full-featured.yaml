@@ -1,0 +1,580 @@
+#cloud-config
+
+# Arcblock Blocklet Server Cloud-Init Configuration - Production Ready
+# Addresses Gemini feedback with enhanced reliability and best practices
+
+users:
+  - name: arcblock
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com
+
+# System packages required for Arcblock Blocklet Server
+packages:
+  - curl
+  - wget
+  - git
+  - build-essential
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - jq
+  - htop
+  - nano
+  - vim
+  - unzip
+  - fail2ban
+  - ufw
+  - podman
+  - python3
+  - python3-pip
+
+package_update: true
+package_upgrade: true
+
+# Create necessary directories and configuration files
+write_files:
+  - path: /home/arcblock/.config/containers/registries.conf
+    content: |
+      [registries.search]
+      registries = ['docker.io', 'registry.fedoraproject.org', 'quay.io', 'registry.access.redhat.com']
+      
+      [registries.insecure]
+      registries = []
+      
+      [registries.block]
+      registries = []
+    owner: arcblock:arcblock
+    permissions: '0644'
+
+  - path: /home/arcblock/.config/containers/storage.conf
+    content: |
+      [storage]
+      driver = "overlay"
+      runroot = "/run/user/1000/containers"
+      graphroot = "/home/arcblock/.local/share/containers/storage"
+      
+      [storage.options]
+      additionalimagestores = []
+      
+      [storage.options.overlay]
+      mountopt = "nodev,metacopy=on"
+    owner: arcblock:arcblock
+    permissions: '0644'
+
+  - path: /home/arcblock/blocklet-server/compose.yaml
+    content: |
+      version: '3.8'
+      
+      services:
+        blocklet-server:
+          image: arcblock/blocklet-server:latest
+          container_name: blocklet-server
+          restart: unless-stopped
+          ports:
+            - "8089:8089"
+            - "80:80"
+            - "443:443"
+          volumes:
+            - blocklet-data:/opt/abtnode/data
+            - blocklet-config:/opt/abtnode/config
+            - blocklet-logs:/opt/abtnode/logs
+          environment:
+            - ABT_NODE_LOG_LEVEL=info
+            - ABT_NODE_ENV=production
+            - ABT_NODE_HOST=0.0.0.0
+            - ABT_NODE_PORT=8089
+            - ABT_NODE_DATA_DIR=/opt/abtnode/data
+            - ABT_NODE_CONFIG_DIR=/opt/abtnode/config
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8089/api/did"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
+          labels:
+            - "io.containers.autoupdate=registry"
+      
+      volumes:
+        blocklet-data:
+          driver: local
+        blocklet-config:
+          driver: local
+        blocklet-logs:
+          driver: local
+    owner: arcblock:arcblock
+    permissions: '0644'
+
+  - path: /etc/systemd/system/blocklet-server.service
+    content: |
+      [Unit]
+      Description=Arcblock Blocklet Server
+      After=network-online.target
+      Wants=network-online.target
+      RequiresMountsFor=/home/arcblock
+      
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      User=arcblock
+      Group=arcblock
+      WorkingDirectory=/home/arcblock/blocklet-server
+      Environment=XDG_RUNTIME_DIR=/run/user/1000
+      Environment=PODMAN_SYSTEMD_UNIT=%n
+      ExecStartPre=/usr/bin/podman compose down --remove-orphans
+      ExecStart=/usr/bin/podman compose up -d
+      ExecStop=/usr/bin/podman compose down --timeout 30
+      ExecReload=/usr/bin/podman compose restart
+      TimeoutStartSec=300
+      TimeoutStopSec=120
+      
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 3600
+      findtime = 600
+      maxretry = 5
+      backend = systemd
+      
+      [sshd]
+      enabled = true
+      port = 2222
+      filter = sshd
+      logpath = /var/log/auth.log
+      banaction = iptables-multiport
+      
+      [blocklet-server]
+      enabled = true
+      port = 8089,80,443
+      filter = blocklet-server
+      logpath = /home/arcblock/blocklet-server/logs/*.log
+      maxretry = 5
+      bantime = 3600
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/fail2ban/filter.d/blocklet-server.conf
+    content: |
+      [Definition]
+      failregex = ^.*\[.*\] .*Failed login attempt from <HOST>.*$
+                  ^.*\[.*\] .*Unauthorized access from <HOST>.*$
+                  ^.*\[.*\] .*Invalid authentication from <HOST>.*$
+                  ^.*\[.*\] .*Blocked request from <HOST>.*$
+                  ^.*\s+<HOST>\s+.*"(GET|POST|PUT|DELETE).*" (401|403|429)
+      ignoreregex = ^.*\[.*\] .*Valid login from <HOST>.*$
+                    ^.*\s+<HOST>\s+.*"(GET|POST|PUT|DELETE).*" (200|201|202|204)
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/logrotate.d/blocklet-server
+    content: |
+      /home/arcblock/blocklet-server/logs/*.log {
+          daily
+          missingok
+          rotate 14
+          compress
+          delaycompress
+          notifempty
+          copytruncate
+          su arcblock arcblock
+          postrotate
+              systemctl reload blocklet-server 2>/dev/null || true
+          endscript
+      }
+    owner: root:root
+    permissions: '0644'
+
+  - path: /home/arcblock/blocklet-server/healthcheck.sh
+    content: |
+      #!/bin/bash
+      # Blocklet Server Health Check Script with improved reliability
+      
+      set -euo pipefail
+      
+      readonly LOGFILE="/home/arcblock/blocklet-server/logs/health.log"
+      readonly TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+      readonly MAX_ATTEMPTS=12
+      readonly SLEEP_INTERVAL=10
+      
+      log() {
+          echo "[$TIMESTAMP] $1" | tee -a "$LOGFILE"
+      }
+      
+      # Create log directory if it doesn't exist
+      mkdir -p "$(dirname "$LOGFILE")"
+      
+      # Function to wait for service readiness
+      wait_for_service() {
+          local attempts=0
+          log "INFO: Waiting for Blocklet Server to become ready..."
+          
+          while [ $attempts -lt $MAX_ATTEMPTS ]; do
+              if curl -sf --max-time 5 http://localhost:8089/api/did >/dev/null 2>&1; then
+                  log "INFO: Blocklet Server is ready and responding"
+                  return 0
+              fi
+              
+              attempts=$((attempts + 1))
+              log "INFO: Attempt $attempts/$MAX_ATTEMPTS - waiting ${SLEEP_INTERVAL}s..."
+              sleep $SLEEP_INTERVAL
+          done
+          
+          log "ERROR: Blocklet Server did not become ready within $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds"
+          return 1
+      }
+      
+      # Check if systemd service is active
+      if systemctl is-active --quiet blocklet-server; then
+          log "INFO: Blocklet Server systemd service is active"
+      else
+          log "ERROR: Blocklet Server systemd service is not active"
+          systemctl restart blocklet-server 2>/dev/null || log "ERROR: Failed to restart service"
+          exit 1
+      fi
+      
+      # Check if container is running
+      if podman ps --filter "name=blocklet-server" --format "{{.Status}}" | grep -q "Up"; then
+          log "INFO: Blocklet Server container is running"
+      else
+          log "ERROR: Blocklet Server container is not running"
+          exit 1
+      fi
+      
+      # Check HTTP endpoint with retry logic
+      if wait_for_service; then
+          log "INFO: Blocklet Server health check passed"
+      else
+          log "ERROR: Blocklet Server health check failed"
+          exit 1
+      fi
+      
+      # Check disk space
+      readonly DISK_USAGE=$(df /home/arcblock | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
+      if [ "$DISK_USAGE" -gt 85 ]; then
+          log "WARN: High disk usage: ${DISK_USAGE}%"
+      else
+          log "INFO: Disk usage: ${DISK_USAGE}%"
+      fi
+      
+      # Check memory usage
+      readonly MEM_USAGE=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
+      if [ "$MEM_USAGE" -gt 85 ]; then
+          log "WARN: High memory usage: ${MEM_USAGE}%"
+      else
+          log "INFO: Memory usage: ${MEM_USAGE}%"
+      fi
+      
+      log "INFO: Health check completed successfully"
+    owner: arcblock:arcblock
+    permissions: '0755'
+
+  - path: /home/arcblock/blocklet-server/backup.sh
+    content: |
+      #!/bin/bash
+      # Blocklet Server Backup Script with improved reliability
+      
+      set -euo pipefail
+      
+      readonly BACKUP_DIR="/home/arcblock/backups"
+      readonly TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+      readonly BACKUP_FILE="blocklet-backup-${TIMESTAMP}.tar.gz"
+      readonly LOG_FILE="/home/arcblock/blocklet-server/logs/backup.log"
+      
+      log() {
+          echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE"
+      }
+      
+      # Create backup directory
+      mkdir -p "$BACKUP_DIR"
+      
+      log "INFO: Starting backup process"
+      
+      # Stop container for consistent backup
+      log "INFO: Stopping container for consistent backup"
+      if ! podman stop blocklet-server 2>/dev/null; then
+          log "WARN: Failed to stop container gracefully, continuing with backup"
+      fi
+      
+      # Create backup with error handling
+      if tar -czf "${BACKUP_DIR}/${BACKUP_FILE}" \
+          -C /home/arcblock \
+          .local/share/containers/storage/volumes/blocklet-server_blocklet-data \
+          .local/share/containers/storage/volumes/blocklet-server_blocklet-config \
+          blocklet-server/compose.yaml 2>/dev/null; then
+          log "INFO: Backup created successfully: ${BACKUP_DIR}/${BACKUP_FILE}"
+      else
+          log "ERROR: Backup creation failed"
+      fi
+      
+      # Restart container
+      log "INFO: Restarting container"
+      if ! systemctl start blocklet-server; then
+          log "ERROR: Failed to restart Blocklet Server service"
+          exit 1
+      fi
+      
+      # Remove old backups (keep last 7)
+      find "$BACKUP_DIR" -name "blocklet-backup-*.tar.gz" -mtime +7 -delete 2>/dev/null || true
+      log "INFO: Cleanup completed - removed backups older than 7 days"
+      
+      log "INFO: Backup process completed successfully"
+    owner: arcblock:arcblock
+    permissions: '0755'
+
+# Run commands for setup
+runcmd:
+  # Error handling function
+  - |
+    error_exit() {
+        echo "ERROR: $1" >&2
+        logger "cloud-init ERROR: $1"
+        exit 1
+    }
+
+  # Create directories with proper ownership
+  - mkdir -p /home/arcblock/{blocklet-server/{logs,data,config},backups,.config/containers,.local/share/containers}
+  - chown -R arcblock:arcblock /home/arcblock
+  - chmod 755 /home/arcblock/blocklet-server
+
+  # Install Node.js LTS via NodeSource repository (production-ready)
+  - curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - || error_exit "Failed to add NodeSource repository"
+  - apt-get install -y nodejs || error_exit "Failed to install Node.js"
+
+  # Install podman-compose via pip for better reliability
+  - pip3 install podman-compose || echo "Warning: podman-compose installation failed, using native podman compose"
+
+  # Configure Podman for rootless operation
+  - echo 'arcblock:100000:65536' >> /etc/subuid
+  - echo 'arcblock:100000:65536' >> /etc/subgid
+  - loginctl enable-linger arcblock || error_exit "Failed to enable user linger"
+
+  # Initialize Podman for arcblock user
+  - sudo -u arcblock podman system migrate || echo "Info: Podman migration not needed"
+  - sudo -u arcblock systemctl --user enable podman.socket || error_exit "Failed to enable Podman socket"
+  - sudo -u arcblock systemctl --user start podman.socket || error_exit "Failed to start Podman socket"
+
+  # Install Blocklet CLI
+  - sudo -u arcblock npm install -g @arcblock/cli || echo "Warning: Failed to install Blocklet CLI"
+
+  # Pull Blocklet Server image
+  - sudo -u arcblock podman pull arcblock/blocklet-server:latest || error_exit "Failed to pull Blocklet Server image"
+
+  # Setup firewall rules (reset and configure properly)
+  - ufw --force reset
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 2222/tcp comment 'SSH'
+  - ufw allow 8089/tcp comment 'Blocklet Server'
+  - ufw allow 80/tcp comment 'HTTP'
+  - ufw allow 443/tcp comment 'HTTPS'
+  - ufw --force enable
+
+  # Configure SSH hardening
+  - cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+  - |
+    cat > /etc/ssh/sshd_config.new << 'EOF'
+    # Enhanced SSH Configuration for Security
+    Port 2222
+    Protocol 2
+    PermitRootLogin no
+    PasswordAuthentication no
+    ChallengeResponseAuthentication no
+    KbdInteractiveAuthentication no
+    PubkeyAuthentication yes
+    AuthorizedKeysFile .ssh/authorized_keys
+    MaxAuthTries 3
+    MaxSessions 10
+    X11Forwarding no
+    AllowTcpForwarding no
+    AllowAgentForwarding no
+    PermitTunnel no
+    ClientAliveInterval 300
+    ClientAliveCountMax 2
+    LoginGraceTime 60
+    StrictModes yes
+    IgnoreRhosts yes
+    HostbasedAuthentication no
+    PermitEmptyPasswords no
+    AllowUsers arcblock
+    EOF
+  - mv /etc/ssh/sshd_config.new /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  # Configure fail2ban with enhanced settings
+  - systemctl enable fail2ban || error_exit "Failed to enable fail2ban"
+  - systemctl start fail2ban || error_exit "Failed to start fail2ban"
+
+  # Set up system limits for better performance
+  - |
+    cat >> /etc/security/limits.conf << 'EOF'
+    # Limits for Blocklet Server performance
+    arcblock soft nofile 65536
+    arcblock hard nofile 65536
+    arcblock soft nproc 32768
+    arcblock hard nproc 32768
+    * soft core 0
+    * hard core 0
+    EOF
+
+  # Configure sysctl for better network performance and security
+  - |
+    cat >> /etc/sysctl.conf << 'EOF'
+    # Network performance tuning for Blocklet Server
+    net.core.rmem_max = 134217728
+    net.core.wmem_max = 134217728
+    net.ipv4.tcp_rmem = 4096 65536 134217728
+    net.ipv4.tcp_wmem = 4096 65536 134217728
+    net.core.netdev_max_backlog = 5000
+    
+    # Container networking
+    net.ipv4.ip_forward = 1
+    
+    # Security hardening
+    net.ipv4.conf.all.accept_redirects = 0
+    net.ipv4.conf.all.send_redirects = 0
+    net.ipv4.conf.all.accept_source_route = 0
+    net.ipv4.conf.all.log_martians = 1
+    net.ipv4.conf.all.rp_filter = 1
+    net.ipv4.conf.default.rp_filter = 1
+    net.ipv4.icmp_echo_ignore_broadcasts = 1
+    net.ipv4.icmp_ignore_bogus_error_responses = 1
+    EOF
+  - sysctl -p
+
+  # Add monitoring cron jobs
+  - echo "*/5 * * * * /home/arcblock/blocklet-server/healthcheck.sh >/dev/null 2>&1" | sudo -u arcblock crontab -
+  - echo "0 2 * * 0 /home/arcblock/blocklet-server/backup.sh >/dev/null 2>&1" | sudo -u arcblock crontab -
+
+  # Enable and configure Blocklet Server service
+  - systemctl daemon-reload
+  - systemctl enable blocklet-server || error_exit "Failed to enable Blocklet Server service"
+
+  # Start Blocklet Server with proper initialization
+  - |
+    # Initialize Blocklet Server with improved reliability
+    cd /home/arcblock/blocklet-server
+    
+    # Start the service
+    sudo -u arcblock systemctl --user start podman.socket
+    sudo systemctl start blocklet-server || error_exit "Failed to start Blocklet Server"
+    
+    # Wait for service to be ready with timeout
+    echo "Waiting for Blocklet Server to become ready..."
+    attempts=0
+    max_attempts=24  # 24 * 15 seconds = 6 minutes
+    
+    while [ $attempts -lt $max_attempts ]; do
+        if curl -sf --max-time 10 http://localhost:8089/api/did >/dev/null 2>&1; then
+            echo "Blocklet Server is ready and responding!"
+            break
+        fi
+        
+        attempts=$((attempts + 1))
+        echo "Attempt $attempts/$max_attempts - waiting 15 seconds..."
+        sleep 15
+        
+        # Check if service is still running
+        if ! systemctl is-active --quiet blocklet-server; then
+            echo "Service stopped unexpectedly, restarting..."
+            systemctl restart blocklet-server
+        fi
+    done
+    
+    if [ $attempts -eq $max_attempts ]; then
+        echo "Warning: Blocklet Server did not become ready within expected time"
+        echo "Check logs: journalctl -u blocklet-server --no-pager"
+    fi
+
+  # Configure automatic updates for containers
+  - |
+    cat > /etc/systemd/system/podman-auto-update.timer << 'EOF'
+    [Unit]
+    Description=Podman auto-update timer
+    
+    [Timer]
+    OnCalendar=daily
+    RandomizedDelaySec=3600
+    Persistent=true
+    
+    [Install]
+    WantedBy=timers.target
+    EOF
+
+  - |
+    cat > /etc/systemd/system/podman-auto-update.service << 'EOF'
+    [Unit]
+    Description=Podman auto-update service
+    
+    [Service]
+    Type=oneshot
+    User=arcblock
+    Group=arcblock
+    Environment=XDG_RUNTIME_DIR=/run/user/1000
+    ExecStart=/usr/bin/podman auto-update
+    ExecStartPost=/usr/bin/systemctl restart blocklet-server
+    EOF
+
+  - systemctl enable podman-auto-update.timer
+  - systemctl start podman-auto-update.timer
+
+  # Final system cleanup and verification
+  - apt-get autoremove -y
+  - apt-get autoclean
+
+  # Final verification steps
+  - systemctl is-active --quiet blocklet-server || error_exit "Blocklet Server service is not active after setup"
+  - sudo -u arcblock podman ps | grep -q blocklet-server || echo "Warning: Blocklet Server container may still be starting"
+
+  # Create initialization marker
+  - touch /home/arcblock/blocklet-server/.cloud-init-complete
+  - chown arcblock:arcblock /home/arcblock/blocklet-server/.cloud-init-complete
+
+# Set system configuration
+timezone: UTC
+hostname: blocklet-server
+
+# Configure automatic security updates
+package_reboot_if_required: false
+
+# Final setup message
+final_message: |
+  ========================================
+  Arcblock Blocklet Server Setup Complete
+  ========================================
+  
+  Server Information:
+  - Hostname: blocklet-server
+  - SSH Port: 2222 (password auth disabled)
+  - Blocklet Server: http://$INSTANCE_ID:8089
+  
+  Access Commands:
+  - SSH: ssh -p 2222 arcblock@$INSTANCE_ID
+  - Service Status: sudo systemctl status blocklet-server
+  - Container Status: sudo -u arcblock podman ps
+  - Health Check: sudo -u arcblock /home/arcblock/blocklet-server/healthcheck.sh
+  - View Logs: sudo journalctl -u blocklet-server -f
+  
+  Security Features:
+  - SSH hardened (key-only, port 2222)
+  - UFW firewall active
+  - Fail2ban protection enabled
+  - Rootless Podman containers
+  - System performance tuned
+  
+  Monitoring:
+  - Health checks: every 5 minutes
+  - Automated backups: weekly (Sundays 2 AM)
+  - Log rotation: daily
+  - Auto-updates: daily
+  
+  Setup completed at: $(date)
+  ========================================
