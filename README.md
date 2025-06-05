@@ -1,11 +1,33 @@
 # ArcDeploy
 
+> **⚠️ WORK IN PROGRESS ⚠️**
+> 
+> **This project is currently under active development and testing. While the configurations are functional, we're still troubleshooting deployment issues and improving compatibility.**
+> 
+> **Current Status:**
+> - ✅ Docker-based configuration (`standard-docker.yaml`) - **Recommended**
+> - 🔄 Podman configuration (`standard.yaml`) - Known compatibility issues
+> - 🔄 Native installation (`native-install.yaml`) - Under testing
+> - 🔄 ARM server compatibility - Known issues, use x86 servers
+> - 📝 Documentation being refined based on real-world testing
+> 
+> **Known Issues:**
+> - Cloud-init may not execute on ARM-based Hetzner servers
+> - Podman compatibility issues with Arcblock Docker images
+> - External script downloads may fail in some regions
+> 
+> **Recommended Approach:** Use `standard-docker.yaml` on x86 servers (CX31+)
+> 
+> **Use at your own risk for production deployments.** We recommend testing thoroughly in a development environment first.
+> 
+> ---
+
 **Automated Arcblock Blocklet Server deployment for Hetzner Cloud with enterprise-grade security and monitoring.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
 [![Hetzner Cloud](https://img.shields.io/badge/Hetzner-Cloud-red.svg)](https://www.hetzner.com/cloud)
-[![Podman](https://img.shields.io/badge/Container-Podman-purple.svg)](https://podman.io/)
+[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/blocklet-server-cloud-init/issues)
 
 ## 🚀 Quick Start
 
@@ -72,23 +94,31 @@ ArcDeploy/
 
 ## 🎯 Deployment Options
 
-### Option 1: Minimal (Recommended)
-**File:** `cloud-init/minimal.yaml` (657 bytes)
-- ✅ Well under Hetzner's 32 KiB limit
-- ✅ Uses external script for full functionality
-- ✅ Easy to update and maintain
+### Option 1: Docker-Based (Recommended ✅)
+**File:** `cloud-init/standard-docker.yaml` (11.3 KB)
+- ✅ **Docker + docker-compose** (proven compatibility)
+- ✅ **Most reliable** - works with all Arcblock images
+- ✅ **Production tested** - standard container runtime
+- ✅ **Easy debugging** - familiar Docker commands
 
-### Option 2: Standard
+### Option 2: Native Installation (Container-Free)
+**File:** `cloud-init/native-install.yaml` (11.0 KB)
+- ✅ **No containers** - direct Node.js installation
+- ✅ **Maximum performance** - no container overhead
+- ✅ **Nginx proxy** included for web access
+- ⚠️ **Under testing** - newer approach
+
+### Option 3: Podman-Based (Known Issues ⚠️)
 **File:** `cloud-init/standard.yaml` (4.7 KB)
-- ✅ Self-contained configuration
-- ✅ No external dependencies
-- ✅ All essential features included
+- ⚠️ **Compatibility issues** with Arcblock images
+- ⚠️ **Rootless setup complexity** - systemd user services
+- 🔄 **Being debugged** - use Docker version instead
 
-### Option 3: Full-Featured
-**File:** `cloud-init/full-featured.yaml` (18.6 KB)
-- ⚠️ May approach size limits
-- ✅ Complete configuration in one file
-- ✅ Maximum features and monitoring
+### Option 4: Minimal External Script
+**File:** `cloud-init/minimal.yaml` (747 bytes)
+- ✅ **Tiny size** - uses external setup script
+- ⚠️ **Podman-based** - inherits Podman issues
+- 🔄 **For testing only** - not recommended for production
 
 ## 🛠️ Quick Setup Guide
 
@@ -280,3 +310,36 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **ArcDeploy** - Deploy smarter, not harder. 🚀
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Add Topics** in GitHub (Settings → Topics):
+   - `arcblock`
+   - `blocklet`
+   - `hetzner-cloud`
+   - `cloud-init`
+   - `podman`
+   - `deployment`
+   - `automation
