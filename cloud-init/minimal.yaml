@@ -16,7 +16,7 @@ package_update: true
 package_upgrade: true
 
 runcmd:
-  - curl -fsSL https://raw.githubusercontent.com/pocklabs/blocklet-server-cloud-init/main/scripts/setup.sh | bash
+  - curl -fsSL https://raw.githubusercontent.com/Pocklabs/blocklet-server-cloud-init/main/scripts/setup.sh | bash
   - reboot
 
 timezone: UTC
@@ -27,4 +27,4 @@ final_message: |
   SSH: ssh -p 2222 arcblock@$INSTANCE_ID (after reboot)
   Web: http://$INSTANCE_ID:8089 (after setup completes)
   
-  For support: https://github.com/pocklabs/blocklet-server-cloud-init
+  For support: https://github.com/Pocklabs/blocklet-server-cloud-init
