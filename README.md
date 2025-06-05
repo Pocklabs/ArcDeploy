@@ -28,7 +28,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
 [![Hetzner Cloud](https://img.shields.io/badge/Hetzner-Cloud-red.svg)](https://www.hetzner.com/cloud)
-[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/blocklet-server-cloud-init/issues)
+[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/ArcDeploy/issues)
 
 ## 🚀 Quick Start
 
@@ -40,8 +40,8 @@ Deploy a production-ready Arcblock Blocklet Server in minutes:
 
 ```bash
 # 1. Clone this repository
-git clone https://github.com/Pocklabs/blocklet-server-cloud-init.git
-cd blocklet-server-cloud-init
+git clone https://github.com/Pocklabs/ArcDeploy.git
+cd ArcDeploy
 
 # Replace SSH key in cloud-init/minimal.yaml
 sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_KEY/' cloud-init/minimal.yaml
@@ -269,8 +269,8 @@ Contributions welcome! Please read our contributing guidelines and submit pull r
 
 ### Development Setup
 ```bash
-git clone https://github.com/Pocklabs/blocklet-server-cloud-init.git
-cd blocklet-server-cloud-init
+git clone https://github.com/Pocklabs/ArcDeploy.git
+cd ArcDeploy
 
 # Test configurations
 yamllint cloud-init/*.yaml
@@ -297,9 +297,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Issues:** [GitHub Issues](https://github.com/Pocklabs/blocklet-server-cloud-init/issues)
-- **Documentation:** [Project Wiki](https://github.com/Pocklabs/blocklet-server-cloud-init/wiki)
-- **Discussions:** [GitHub Discussions](https://github.com/Pocklabs/blocklet-server-cloud-init/discussions)
+- **Issues:** [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Documentation:** [Project Wiki](https://github.com/Pocklabs/ArcDeploy/wiki)
+- **Discussions:** [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
 
 ## 🌟 Acknowledgments
 

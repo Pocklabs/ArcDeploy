@@ -211,13 +211,77 @@ write_files:
     owner: arcblock:arcblock
     permissions: '0755'
 
+  - path: /tmp/ssh-config.txt
+    content: |
+      Port 2222
+      Protocol 2
+      PermitRootLogin no
+      PasswordAuthentication no
+      ChallengeResponseAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+      MaxAuthTries 3
+      MaxSessions 10
+      X11Forwarding no
+      AllowTcpForwarding no
+      AllowAgentForwarding no
+      PermitTunnel no
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      LoginGraceTime 60
+      StrictModes yes
+      IgnoreRhosts yes
+      HostbasedAuthentication no
+      PermitEmptyPasswords no
+      AllowUsers arcblock
+    owner: root:root
+    permissions: '0644'
+
+  - path: /tmp/limits-config.txt
+    content: |
+      # Limits for Blocklet Server performance
+      arcblock soft nofile 65536
+      arcblock hard nofile 65536
+      arcblock soft nproc 32768
+      arcblock hard nproc 32768
+      * soft core 0
+      * hard core 0
+    owner: root:root
+    permissions: '0644'
+
+  - path: /tmp/sysctl-config.txt
+    content: |
+      # Network performance tuning for Blocklet Server
+      net.core.rmem_max = 134217728
+      net.core.wmem_max = 134217728
+      net.ipv4.tcp_rmem = 4096 65536 134217728
+      net.ipv4.tcp_wmem = 4096 65536 134217728
+      net.core.netdev_max_backlog = 5000
+      
+      # Container networking
+      net.ipv4.ip_forward = 1
+      
+      # Security hardening
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv4.conf.all.log_martians = 1
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.rp_filter = 1
+      net.ipv4.icmp_echo_ignore_broadcasts = 1
+      net.ipv4.icmp_ignore_bogus_error_responses = 1
+    owner: root:root
+    permissions: '0644'
+
 runcmd:
   - mkdir -p /home/arcblock/blocklet-server/{logs,data,config}
   - chown -R arcblock:arcblock /home/arcblock
   - chmod 755 /home/arcblock/blocklet-server
   
   # Install Node.js LTS
-  - curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+  - curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+  - bash /tmp/nodesource_setup.sh
   - apt-get install -y nodejs
   
   # Configure Docker
@@ -243,72 +307,17 @@ runcmd:
   
   # Configure SSH hardening
   - cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-  - |
-    cat > /etc/ssh/sshd_config << 'EOF'
-    # Enhanced SSH Configuration for Security
-    Port 2222
-    Protocol 2
-    PermitRootLogin no
-    PasswordAuthentication no
-    ChallengeResponseAuthentication no
-    KbdInteractiveAuthentication no
-    PubkeyAuthentication yes
-    AuthorizedKeysFile .ssh/authorized_keys
-    MaxAuthTries 3
-    MaxSessions 10
-    X11Forwarding no
-    AllowTcpForwarding no
-    AllowAgentForwarding no
-    PermitTunnel no
-    ClientAliveInterval 300
-    ClientAliveCountMax 2
-    LoginGraceTime 60
-    StrictModes yes
-    IgnoreRhosts yes
-    HostbasedAuthentication no
-    PermitEmptyPasswords no
-    AllowUsers arcblock
-    EOF
+  - cp /tmp/ssh-config.txt /etc/ssh/sshd_config
   
   # Configure fail2ban
   - systemctl enable fail2ban
   - systemctl start fail2ban
   
   # Set up system limits
-  - |
-    cat >> /etc/security/limits.conf << 'EOF'
-    # Limits for Blocklet Server performance
-    arcblock soft nofile 65536
-    arcblock hard nofile 65536
-    arcblock soft nproc 32768
-    arcblock hard nproc 32768
-    * soft core 0
-    * hard core 0
-    EOF
+  - cat /tmp/limits-config.txt >> /etc/security/limits.conf
   
   # Configure sysctl
-  - |
-    cat >> /etc/sysctl.conf << 'EOF'
-    # Network performance tuning for Blocklet Server
-    net.core.rmem_max = 134217728
-    net.core.wmem_max = 134217728
-    net.ipv4.tcp_rmem = 4096 65536 134217728
-    net.ipv4.tcp_wmem = 4096 65536 134217728
-    net.core.netdev_max_backlog = 5000
-    
-    # Container networking
-    net.ipv4.ip_forward = 1
-    
-    # Security hardening
-    net.ipv4.conf.all.accept_redirects = 0
-    net.ipv4.conf.all.send_redirects = 0
-    net.ipv4.conf.all.accept_source_route = 0
-    net.ipv4.conf.all.log_martians = 1
-    net.ipv4.conf.all.rp_filter = 1
-    net.ipv4.conf.default.rp_filter = 1
-    net.ipv4.icmp_echo_ignore_broadcasts = 1
-    net.ipv4.icmp_ignore_bogus_error_responses = 1
-    EOF
+  - cat /tmp/sysctl-config.txt >> /etc/sysctl.conf
   - sysctl -p
   
   # Setup cron job for health monitoring
@@ -320,6 +329,7 @@ runcmd:
   - systemctl start blocklet-server
   
   # Wait for service to be ready
+  - sleep 30
   - |
     echo "Waiting for Blocklet Server to become ready..."
     attempts=0
@@ -350,6 +360,9 @@ runcmd:
   - apt-get autoremove -y
   - apt-get autoclean
   
+  # Clean up temporary files
+  - rm -f /tmp/ssh-config.txt /tmp/limits-config.txt /tmp/sysctl-config.txt /tmp/nodesource_setup.sh
+  
   # Final verification
   - systemctl is-active --quiet blocklet-server || echo "WARNING: Blocklet Server service is not active"
   - docker ps | grep -q blocklet-server || echo "WARNING: Blocklet Server container may still be starting"
@@ -369,9 +382,21 @@ final_message: |
   ArcDeploy: Blocklet Server setup completed with Docker!
   
   Access Information:
-  - SSH: ssh -p 2222 arcblock@$INSTANCE_ID
-  - Web Interface: http://$INSTANCE_ID:8089
+  - SSH: ssh -p 2222 arcblock@YOUR_SERVER_IP
+  - Web Interface: http://YOUR_SERVER_IP:8089
   - Container Status: docker ps
   - Service Status: systemctl status blocklet-server
+  - Health Check: /home/arcblock/blocklet-server/healthcheck.sh
   
-  For support: https://github.com/Pocklabs/blocklet-server-cloud-init
+  Security Features:
+  - SSH hardened (key-only auth, port 2222)
+  - UFW firewall enabled
+  - Fail2ban protection active
+  - Docker containers with health checks
+  
+  Monitoring:
+  - Health checks: every 5 minutes
+  - Container logs: docker logs blocklet-server
+  - Service logs: journalctl -u blocklet-server -f
+  
+  For support: https://github.com/Pocklabs/ArcDeploy

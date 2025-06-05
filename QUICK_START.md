@@ -41,7 +41,7 @@ Copy the entire output starting with `ssh-ed25519 AAAAC3...`
 
 ```bash
 # 1. Download your chosen configuration
-curl -O https://raw.githubusercontent.com/Pocklabs/blocklet-server-cloud-init/main/cloud-init/minimal.yaml
+curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/cloud-init/minimal.yaml
 
 # 2. Replace SSH key placeholder
 sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_KEY_HERE/' minimal.yaml
@@ -77,7 +77,7 @@ curl -X POST \
 
 ```bash
 # Download firewall script
-curl -O https://raw.githubusercontent.com/Pocklabs/blocklet-server-cloud-init/main/scripts/hetzner-firewall-setup.sh
+curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/hetzner-firewall-setup.sh
 chmod +x hetzner-firewall-setup.sh
 
 # Apply firewall rules
@@ -101,7 +101,7 @@ open http://YOUR_SERVER_IP:8089
 
 ```bash
 # Download validation script
-curl -O https://raw.githubusercontent.com/Pocklabs/blocklet-server-cloud-init/main/scripts/validate-setup.sh
+curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/validate-setup.sh
 chmod +x validate-setup.sh
 
 # Run validation
@@ -202,7 +202,7 @@ sudo ufw status | grep 8089
 
 - **Documentation**: [Full README](README.md)
 - **Firewall Guide**: [docs/FIREWALL_PORTS_GUIDE.md](docs/FIREWALL_PORTS_GUIDE.md)
-- **Issues**: [GitHub Issues](https://github.com/Pocklabs/blocklet-server-cloud-init/issues)
+- **Issues**: [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
 
 ---
 

@@ -93,14 +93,28 @@ write_files:
     owner: root:root
     permissions: '0644'
 
-  - path: /home/arcblock/setup-complete.sh
+  - path: /tmp/ssh-config.txt
+    content: |
+      Port 2222
+      Protocol 2
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      MaxAuthTries 3
+      X11Forwarding no
+      AllowTcpForwarding no
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      AllowUsers arcblock
+    owner: root:root
+    permissions: '0644'
+
+  - path: /home/arcblock/setup-post-install.sh
     content: |
       #!/bin/bash
       set -e
       
-      # Install Node.js
-      curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-      apt-get install -y nodejs
+      echo "Starting post-installation setup..."
       
       # Configure Podman for rootless
       echo 'arcblock:100000:65536' >> /etc/subuid
@@ -119,19 +133,7 @@ write_files:
       
       # Configure SSH
       cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-      cat > /etc/ssh/sshd_config << 'EOF'
-      Port 2222
-      Protocol 2
-      PermitRootLogin no
-      PasswordAuthentication no
-      PubkeyAuthentication yes
-      MaxAuthTries 3
-      X11Forwarding no
-      AllowTcpForwarding no
-      ClientAliveInterval 300
-      ClientAliveCountMax 2
-      AllowUsers arcblock
-      EOF
+      cp /tmp/ssh-config.txt /etc/ssh/sshd_config
       
       # Configure firewall
       ufw --force reset
@@ -151,26 +153,48 @@ write_files:
       systemctl start blocklet-server
       
       # Wait for service
+      echo "Waiting for Blocklet Server to become ready..."
       for i in {1..24}; do
         if curl -sf http://localhost:8089/api/did >/dev/null 2>&1; then
           echo "Blocklet Server is ready!"
           break
         fi
+        echo "Attempt $i/24 - waiting 15 seconds..."
         sleep 15
       done
       
       # Restart SSH
       systemctl restart ssh
       
+      # Clean up
+      rm -f /tmp/ssh-config.txt
+      
       echo "Setup completed at $(date)" > /home/arcblock/setup-complete.log
+      echo "Post-installation setup completed successfully!"
     owner: root:root
     permissions: '0755'
 
 runcmd:
   - mkdir -p /home/arcblock/blocklet-server
   - chown -R arcblock:arcblock /home/arcblock
-  - /home/arcblock/setup-complete.sh
-  - reboot
+  
+  # Install Node.js LTS
+  - curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+  - bash /tmp/nodesource_setup.sh
+  - apt-get install -y nodejs
+  
+  # Install podman-compose
+  - pip3 install podman-compose
+  
+  # Run post-installation setup
+  - /home/arcblock/setup-post-install.sh
+  
+  # Final verification
+  - systemctl is-active --quiet blocklet-server || echo "WARNING: Service may still be starting"
+  
+  # Create completion marker
+  - touch /home/arcblock/.setup-complete
+  - chown arcblock:arcblock /home/arcblock/.setup-complete
 
 timezone: UTC
 hostname: blocklet-server
@@ -178,5 +202,11 @@ package_reboot_if_required: false
 
 final_message: |
   Arcblock Blocklet Server setup completed!
-  SSH: ssh -p 2222 arcblock@$INSTANCE_ID
-  Web: http://$INSTANCE_ID:8089
+  
+  Access Information:
+  - SSH: ssh -p 2222 arcblock@YOUR_SERVER_IP
+  - Web Interface: http://YOUR_SERVER_IP:8089
+  - Service Status: systemctl status blocklet-server
+  - Container Status: sudo -u arcblock podman ps
+  
+  Setup completed successfully!
