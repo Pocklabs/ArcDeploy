@@ -17,10 +17,10 @@ Deploy a production-ready Arcblock Blocklet Server in minutes:
 
 ```bash
 # 1. Clone this repository
-git clone https://github.com/your-username/blocklet-server-cloud-init.git
+git clone https://github.com/pocklabs/blocklet-server-cloud-init.git
 cd blocklet-server-cloud-init
 
-# 2. Replace SSH key in cloud-init/minimal.yaml
+# Replace SSH key in cloud-init/minimal.yaml
 sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_KEY/' cloud-init/minimal.yaml
 
 # 3. Deploy via Hetzner Cloud Console or API
@@ -238,7 +238,7 @@ Contributions welcome! Please read our contributing guidelines and submit pull r
 
 ### Development Setup
 ```bash
-git clone https://github.com/your-username/blocklet-server-cloud-init.git
+git clone https://github.com/pocklabs/blocklet-server-cloud-init.git
 cd blocklet-server-cloud-init
 
 # Test configurations
@@ -266,9 +266,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Issues:** [GitHub Issues](https://github.com/your-username/blocklet-server-cloud-init/issues)
-- **Documentation:** [Project Wiki](https://github.com/your-username/blocklet-server-cloud-init/wiki)
-- **Discussions:** [GitHub Discussions](https://github.com/your-username/blocklet-server-cloud-init/discussions)
+- **Issues:** [GitHub Issues](https://github.com/pocklabs/blocklet-server-cloud-init/issues)
+- **Documentation:** [Project Wiki](https://github.com/pocklabs/blocklet-server-cloud-init/wiki)
+- **Discussions:** [GitHub Discussions](https://github.com/pocklabs/blocklet-server-cloud-init/discussions)
 
 ## 🌟 Acknowledgments
 
