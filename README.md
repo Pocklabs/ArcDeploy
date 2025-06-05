@@ -291,6 +291,88 @@ shellcheck scripts/*.sh
 - Hetzner Cloud account and API token
 - curl/wget for script execution
 
+## 🐛 Debugging Cloud-Init Issues
+
+If you encounter problems during deployment, use these debugging commands based on the [official cloud-init debugging guide](https://cloudinit.readthedocs.io/en/latest/howto/debugging.html):
+
+### Quick Status Check
+```bash
+# Check overall cloud-init status
+sudo cloud-init status --long
+
+# Check if cloud-init services completed
+sudo systemctl status cloud-init-local.service cloud-init-network.service cloud-config.service cloud-final.service
+```
+
+### Common Issues and Solutions
+
+#### Can't SSH to Instance
+```bash
+# Check serial console for errors (if available)
+# Try password authentication if SSH keys failed
+# Check cloud-init logs for user creation errors
+sudo tail -f /var/log/cloud-init.log
+```
+
+#### Cloud-Init Didn't Run
+```bash
+# Check datasource detection
+sudo cat /run/cloud-init/ds-identify.log
+
+# Verify services started
+sudo systemctl list-jobs --after
+```
+
+#### Cloud-Init Incomplete/Hanging
+```bash
+# Check for system errors
+sudo dmesg -T | grep -i -e warning -e error -e fatal
+
+# Check for failed services
+sudo systemctl --failed
+
+# Find blocking processes
+sudo pstree $(pgrep cloud-init)
+```
+
+#### Configuration Issues
+```bash
+# Validate your YAML before deployment
+python3 -c "import yaml; yaml.safe_load(open('cloud-init/minimal.yaml'))"
+
+# Check cloud-init logs for specific errors
+sudo tail -100 /var/log/cloud-init.log
+sudo tail -100 /var/log/cloud-init-output.log
+
+# Re-run cloud-init for testing (destroys existing config)
+sudo cloud-init clean --logs
+sudo cloud-init init
+```
+
+### Log Locations
+- **Main log**: `/var/log/cloud-init.log`
+- **Command output**: `/var/log/cloud-init-output.log`
+- **Service status**: `/var/log/cloud-init-output.log`
+- **Datasource detection**: `/run/cloud-init/ds-identify.log`
+
+### Blocklet Server Specific
+```bash
+# Check Blocklet Server service
+sudo systemctl status blocklet-server
+
+# Check container status
+sudo -u arcblock podman ps
+
+# Run health check
+sudo -u arcblock /home/arcblock/blocklet-server/healthcheck.sh
+
+# Check service logs
+sudo journalctl -u blocklet-server -f
+```
+
+### 📚 Comprehensive Debugging
+For detailed troubleshooting including recovery procedures, manual fixes, and advanced debugging techniques, see our complete [Debugging Guide](docs/DEBUGGING_GUIDE.md).
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
