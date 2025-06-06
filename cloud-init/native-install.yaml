@@ -200,7 +200,7 @@ write_files:
       fi
 
       log "INFO: Health check completed successfully"
-    owner: arcblock:arcblock
+    owner: root:root
     permissions: "0755"
 
   - path: /tmp/ssh-config.txt
@@ -316,6 +316,9 @@ runcmd:
   # Setup cron job for health monitoring
   - echo "*/5 * * * * /opt/blocklet-server/healthcheck.sh >/dev/null 2>&1" | sudo -u arcblock crontab -
 
+  # Set proper ownership for healthcheck script
+  - chown arcblock:arcblock /opt/blocklet-server/healthcheck.sh
+
   # Enable and start Blocklet Server service
   - systemctl daemon-reload
   - systemctl enable blocklet-server
@@ -357,9 +360,9 @@ runcmd:
   - rm -f /tmp/ssh-config.txt /tmp/limits-config.txt /tmp/sysctl-config.txt /tmp/nodesource_setup.sh
 
   # Final verification
-  - systemctl is-active --quiet blocklet-server || echo "WARNING: Blocklet Server service is not active"
-  - systemctl is-active --quiet nginx || echo "WARNING: Nginx is not active"
-  - systemctl is-active --quiet redis-server || echo "WARNING: Redis is not active"
+  - systemctl is-active --quiet blocklet-server || echo "WARNING Blocklet Server service is not active"
+  - systemctl is-active --quiet nginx || echo "WARNING Nginx is not active"
+  - systemctl is-active --quiet redis-server || echo "WARNING Redis is not active"
 
   # Create initialization marker
   - touch /opt/blocklet-server/.native-install-complete
