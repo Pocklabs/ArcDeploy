@@ -75,3 +75,7 @@ docs/site/
 # Runtime files
 *.pid
 *.sock
+
+# Debug logs folder
+LOGS/
+logs/

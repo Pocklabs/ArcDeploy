@@ -225,6 +225,24 @@ ls -la /home/arcblock/backups/
 
 ## 🔧 Troubleshooting
 
+### Automated Diagnostic Tools
+
+**Quick System Diagnosis:**
+```bash
+# Download and run comprehensive diagnostic script
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh -o /tmp/debug_commands.sh
+chmod +x /tmp/debug_commands.sh
+/tmp/debug_commands.sh
+```
+
+**Manual Recovery (if cloud-init failed):**
+```bash
+# Download and run automated recovery script
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/manual_recovery.sh -o /tmp/manual_recovery.sh
+chmod +x /tmp/manual_recovery.sh
+sudo /tmp/manual_recovery.sh
+```
+
 ### Common Issues
 
 **Can't SSH to server:**
@@ -251,14 +269,16 @@ curl -I http://localhost:8089
 **Cloud-init failed:**
 ```bash
 # Check cloud-init status
-sudo cloud-init status
+sudo cloud-init status --long
 
 # View cloud-init logs
 sudo cat /var/log/cloud-init-output.log
+sudo cat /var/log/cloud-init.log | tail -50
 ```
 
 ## 📖 Documentation
 
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Comprehensive debugging and recovery procedures
 - **[Firewall & Ports Guide](docs/FIREWALL_PORTS_GUIDE.md)** - Complete network configuration
 - **[Implementation Details](docs/IMPLEMENTATION_DETAILS.md)** - Technical deep dive
 - **[Changelog](docs/CHANGELOG.md)** - Version history and changes
@@ -277,6 +297,9 @@ yamllint cloud-init/*.yaml
 
 # Validate scripts
 shellcheck scripts/*.sh
+
+# Test diagnostic tools
+./scripts/debug_commands.sh
 ```
 
 ## 📋 Requirements
