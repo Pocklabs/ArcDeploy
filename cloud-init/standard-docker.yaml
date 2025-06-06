@@ -106,7 +106,7 @@ write_files:
       port = 2222
       filter = sshd
       logpath = /var/log/auth.log
-      banaction = iptables-multiport
+      banaction = iptables-multipart
       
       [blocklet-server]
       enabled = true
@@ -353,9 +353,9 @@ runcmd:
     
     if [ $attempts -eq $max_attempts ]; then
         echo "Warning: Blocklet Server did not become ready within expected time"
-        echo "Check logs: journalctl -u blocklet-server --no-pager"
+        echo "Check logs with: journalctl -u blocklet-server --no-pager"
     fi
-  
+
   # Final cleanup
   - apt-get autoremove -y
   - apt-get autoclean
