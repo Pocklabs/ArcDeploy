@@ -271,7 +271,7 @@ runcmd:
   - apt-get install -y nodejs
 
   # Install Blocklet CLI globally
-  - npm install -g @arcblock/cli
+  - npm install -g @blocklet/cli
 
   # Configure Redis
   - systemctl enable redis-server
