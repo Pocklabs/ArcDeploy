@@ -190,7 +190,7 @@ runcmd:
   - /home/arcblock/setup-post-install.sh
   
   # Final verification
-  - systemctl is-active --quiet blocklet-server || echo "WARNING: Service may still be starting"
+  - systemctl is-active --quiet blocklet-server || echo "WARNING Service may still be starting"
   
   # Create completion marker
   - touch /home/arcblock/.setup-complete
