@@ -1,209 +1,176 @@
 # ArcDeploy Quick Start Guide
 
-Get your Arcblock Blocklet Server running on Hetzner Cloud in under 10 minutes.
+Deploy a production-ready Arcblock Blocklet Server in under 10 minutes with this streamlined guide.
 
-## 🚀 Prerequisites
+## Prerequisites
 
 - Hetzner Cloud account
-- SSH key pair (ED25519 recommended)
-- Basic terminal knowledge
+- SSH key pair (we'll generate one if needed)
+- 10 minutes of time
 
-## 📋 Step 1: Prepare SSH Key
+## Step 1: Clone Repository
 
 ```bash
-# Generate new SSH key (if needed)
+git clone https://github.com/Pocklabs/ArcDeploy.git
+cd ArcDeploy
+```
+
+## Step 2: Generate SSH Key (if needed)
+
+```bash
+# Generate new SSH key pair
 ssh-keygen -t ed25519 -C "your-email@example.com"
 
-# Display your public key
+# Display your public key (copy this)
 cat ~/.ssh/id_ed25519.pub
 ```
 
 Copy the entire output starting with `ssh-ed25519 AAAAC3...`
 
-## 📋 Step 2: Choose Configuration
+## Step 3: Configure Cloud-Init
 
-### Option A: Minimal (Recommended - 657 bytes)
-- Uses external script for full functionality
-- Well under Hetzner's 32 KiB limit
-- Easy to update and maintain
+Edit `cloud-init.yaml` and replace the SSH key placeholder:
 
-### Option B: Standard (4.7 KB)
-- Self-contained configuration
-- No external dependencies
-- All essential features included
-
-### Option C: Full-Featured (18.6 KB)
-- Maximum features and monitoring
-- Complete configuration in one file
-- May approach size limits
-
-## 📋 Step 3: Configure Cloud-Init
-
-```bash
-# 1. Download your chosen configuration
-curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/cloud-init/minimal.yaml
-
-# 2. Replace SSH key placeholder
-sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_KEY_HERE/' minimal.yaml
+```yaml
+ssh_authorized_keys:
+  - YOUR_ACTUAL_SSH_PUBLIC_KEY_HERE
 ```
 
-## 📋 Step 4: Deploy to Hetzner
-
-### Via Console (Easiest)
-1. Login to Hetzner Cloud Console
-2. Create new server → CX31 or higher
-3. Select Ubuntu 22.04 LTS
-4. Paste your modified cloud-init in "Cloud config" field
-5. Create server
-
-### Via API (Advanced)
+**One-liner replacement:**
 ```bash
-export HETZNER_API_TOKEN="your-api-token"
+# Replace SSH key placeholder
+sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_KEY_HERE/' cloud-init.yaml
+```
+
+## Step 4: Deploy to Hetzner Cloud
+
+### Via Hetzner Console (Recommended)
+
+1. Login to [Hetzner Cloud Console](https://console.hetzner.cloud/)
+2. Create new server:
+   - **Location:** Any (nbg1 recommended)
+   - **Image:** Ubuntu 22.04
+   - **Type:** CX31 or higher
+   - **Networking:** Default
+   - **SSH Keys:** Skip (we use cloud-init)
+   - **Cloud config:** Paste entire content of `cloud-init.yaml`
+3. Click "Create & Buy now"
+
+### Via API (Alternative)
+
+```bash
+export HETZNER_API_TOKEN="your-token-here"
 
 curl -X POST \
   -H "Authorization: Bearer $HETZNER_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"image\": \"ubuntu-22.04\",
-    \"location\": \"nbg1\",
-    \"name\": \"blocklet-server\",
-    \"server_type\": \"cx31\",
-    \"user_data\": \"$(cat minimal.yaml | jq -sRr @json)\"
-  }" \
+  -d '{
+    "image": "ubuntu-22.04",
+    "location": "nbg1",
+    "name": "blocklet-server",
+    "server_type": "cx31",
+    "user_data": "'"$(cat cloud-init.yaml)"'"
+  }' \
   https://api.hetzner.cloud/v1/servers
 ```
 
-## 📋 Step 5: Configure Firewall
+## Step 5: Wait for Deployment
+
+The installation takes 5-10 minutes. You can monitor progress via:
+
+- Hetzner Console (Server > Graphs)
+- SSH once server is running: `sudo tail -f /var/log/cloud-init-output.log`
+
+## Step 6: Access Your Server
+
+Once deployment completes:
 
 ```bash
-# Download firewall script
-curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/hetzner-firewall-setup.sh
-chmod +x hetzner-firewall-setup.sh
-
-# Apply firewall rules
-export HETZNER_API_TOKEN="your-api-token"
-./hetzner-firewall-setup.sh blocklet-server
-```
-
-## 📋 Step 6: Access Your Server
-
-Wait 5-10 minutes for setup to complete, then:
-
-```bash
-# SSH access
+# SSH access (note custom port 2222)
 ssh -p 2222 arcblock@YOUR_SERVER_IP
 
 # Web interface
-open http://YOUR_SERVER_IP:8089
+open http://YOUR_SERVER_IP:8080
 ```
 
-## 📋 Step 7: Validate Installation
+## Verification Commands
 
 ```bash
-# Download validation script
-curl -O https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/validate-setup.sh
-chmod +x validate-setup.sh
+# Check deployment status
+sudo cloud-init status --long
 
-# Run validation
-./validate-setup.sh
-```
-
-## ✅ Success Indicators
-
-You should see:
-- ✅ SSH access on port 2222
-- ✅ Blocklet Server web interface on port 8089
-- ✅ All validation checks passing
-- ✅ Container running: `sudo -u arcblock podman ps`
-
-## 🔧 Quick Commands
-
-### Check Status
-```bash
-# Service status
+# Check Blocklet Server
 sudo systemctl status blocklet-server
 
-# Container status
-sudo -u arcblock podman ps
+# Test web interface
+curl -I http://localhost:8080
+```
 
-# View logs
+## What Gets Installed
+
+- **Blocklet Server:** Native Node.js installation
+- **Nginx:** Reverse proxy and SSL termination
+- **Security:** UFW firewall, Fail2ban, SSH hardening
+- **Monitoring:** System logging and health checks
+- **SSL/TLS:** Automatic certificate support
+
+## Access Points
+
+Your server will be accessible via:
+
+- **SSH:** `ssh -p 2222 arcblock@YOUR_SERVER_IP`
+- **Web UI:** `http://YOUR_SERVER_IP:8080`
+- **Secure Web:** `https://YOUR_SERVER_IP:8443`
+- **Admin Panel:** `http://YOUR_SERVER_IP:8080/.well-known/server/admin/`
+
+## Firewall Ports
+
+The following ports are automatically configured:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 2222 | TCP | SSH Access |
+| 8080 | TCP | HTTP Web Interface |
+| 8443 | TCP | HTTPS Web Interface |
+
+## Troubleshooting
+
+### Can't SSH to server
+```bash
+# Test connectivity
+telnet YOUR_SERVER_IP 2222
+
+# Check from Hetzner Console if SSH is working
+```
+
+### Web interface not accessible
+```bash
+# SSH to server first, then:
+sudo systemctl status blocklet-server
 sudo journalctl -u blocklet-server -f
 ```
 
-### Manage Service
+### Cloud-init failed
 ```bash
-# Restart service
-sudo systemctl restart blocklet-server
-
-# View container logs
-sudo -u arcblock podman logs blocklet-server
-
-# Access container shell
-sudo -u arcblock podman exec -it blocklet-server /bin/bash
+# Check cloud-init logs
+sudo tail -f /var/log/cloud-init-output.log
+sudo cloud-init status --long
 ```
 
-### Health & Monitoring
-```bash
-# Manual health check
-sudo -u arcblock /home/arcblock/blocklet-server/healthcheck.sh
+## Next Steps
 
-# View health logs
-cat /home/arcblock/blocklet-server/logs/health.log
+1. **Secure your server:** Review firewall rules, update SSH keys
+2. **Configure SSL:** Set up proper domain and SSL certificates
+3. **Backup strategy:** Plan for data backup and recovery
+4. **Monitoring:** Set up external monitoring for uptime
+5. **Updates:** Plan for regular system and Blocklet updates
 
-# Check backups
-ls -la /home/arcblock/backups/
-```
+## Support
 
-## 🚨 Troubleshooting
-
-### Can't SSH
-```bash
-# Check if port 2222 is open
-telnet YOUR_SERVER_IP 2222
-
-# Check cloud-init status
-sudo cloud-init status
-sudo cat /var/log/cloud-init-output.log
-```
-
-### Service Not Running
-```bash
-# Check service logs
-sudo journalctl -u blocklet-server --no-pager
-
-# Restart service
-sudo systemctl restart blocklet-server
-
-# Check container status
-sudo -u arcblock podman ps -a
-```
-
-### Web Interface Not Accessible
-```bash
-# Check if port is listening
-sudo netstat -tlnp | grep :8089
-
-# Test local connectivity
-curl -I http://localhost:8089
-
-# Check firewall
-sudo ufw status | grep 8089
-```
-
-## 📚 Next Steps
-
-1. **Complete Setup**: Access web interface and follow initial setup wizard
-2. **Install Blocklets**: Browse and install your first blocklet
-3. **Configure Domain**: Point your domain to the server IP
-4. **Setup SSL**: Configure HTTPS with Let's Encrypt
-5. **Monitor**: Set up additional monitoring and alerting
-
-## 🆘 Need Help?
-
-- **Documentation**: [Full README](README.md)
-- **Firewall Guide**: [docs/FIREWALL_PORTS_GUIDE.md](docs/FIREWALL_PORTS_GUIDE.md)
-- **Issues**: [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Issues:** [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Documentation:** [Main README](README.md)
+- **Community:** [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
 
 ---
 
-**Deployment Time**: ~5-10 minutes | **Total Setup**: ~15 minutes
+**Total time:** ~10 minutes | **Cost:** ~€0.10/hour for CX31 server
