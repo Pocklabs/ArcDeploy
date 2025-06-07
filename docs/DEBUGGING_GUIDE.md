@@ -113,7 +113,7 @@ sudo systemctl list-jobs --after
 **Debugging Steps:**
 ```bash
 # Validate YAML syntax locally
-python3 -c "import yaml; yaml.safe_load(open('minimal.yaml'))"
+python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
 
 # Check cloud-init logs for parsing errors
 sudo grep -i -A5 -B5 "yaml\|parse\|syntax" /var/log/cloud-init.log

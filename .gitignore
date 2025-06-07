@@ -39,9 +39,10 @@ Thumbs.db
 .nvim/
 
 # Cloud-init customized files
-cloud-init/my-*.yaml
-cloud-init/custom-*.yaml
-cloud-init/*-customized.yaml
+my-cloud-init.yaml
+custom-cloud-init.yaml
+*-customized.yaml
+cloud-init-*.yaml
 
 # API tokens and secrets
 *token*

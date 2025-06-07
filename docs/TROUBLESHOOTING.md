@@ -357,13 +357,13 @@ sudo systemctl start fail2ban
 ### Pre-deployment Validation
 ```bash
 # Validate YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('cloud-init/standard.yaml'))"
+python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
 
 # Check SSH key format
-grep -E "^ssh-(rsa|dss|ecdsa|ed25519)" cloud-init/standard.yaml
+grep -E "^ssh-(rsa|dss|ecdsa|ed25519)" cloud-init.yaml
 
 # Validate required fields
-grep -E "(users|packages|write_files|runcmd)" cloud-init/standard.yaml
+grep -E "(users|packages|write_files|runcmd)" cloud-init.yaml
 ```
 
 ### Post-deployment Validation
@@ -387,13 +387,13 @@ curl -sf http://localhost:8089/api/did && echo "API OK" || echo "API FAILED"
 - **Issue**: `arcblock/blocklet-server:latest` may require authentication
 - **Workaround**: Use native installation (`native-install.yaml`)
 
-### 3. Podman vs Docker Compatibility
-- **Issue**: Some configurations work better with Docker
-- **Workaround**: Use `standard-docker.yaml` instead of `standard.yaml`
+### 3. Network Timeout Issues
+- **Issue**: Package downloads may fail in some regions
+- **Workaround**: Retry deployment or use different package mirrors
 
-### 4. Network Timeout Issues
-- **Issue**: External script downloads may fail in some regions
-- **Workaround**: Use self-contained configurations instead of minimal.yaml
+### 4. Cloud Provider Compatibility
+- **Issue**: Some cloud providers may have different cloud-init implementations
+- **Workaround**: Test deployment in development environment first
 
 ## Advanced Debugging
 
