@@ -1,10 +1,25 @@
 # ArcDeploy
 
+> **⚠️ WORK IN PROGRESS ⚠️**
+> 
+> **This project is currently under active development and testing. While the native installation approach is our primary focus and has shown good results, we're still refining the deployment process and documentation.**
+> 
+> **Current Status:**
+> - ✅ Native installation approach (primary focus)
+> - 🔄 Testing and validation in progress
+> - 📝 Documentation being refined based on real-world deployments
+> - 🐛 Known issues being addressed
+> 
+> **Use with caution for production deployments.** We recommend thorough testing in a development environment first.
+> 
+> ---
+
 **One-Click Arcblock Blocklet Server Deployment for Hetzner Cloud**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
 [![Hetzner Cloud](https://img.shields.io/badge/Hetzner-Cloud-red.svg)](https://www.hetzner.com/cloud)
+[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/ArcDeploy/issues)
 
 ## 🚀 Quick Start
 
