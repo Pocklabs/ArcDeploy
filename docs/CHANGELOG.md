@@ -2,6 +2,73 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.2] - 2025-06-07
+
+### 📚 Comprehensive Documentation Updates
+
+#### Documentation Modernization
+- **BREAKING**: Updated all documentation to reflect native installation architecture
+- Updated `IMPLEMENTATION_DETAILS.md` with comprehensive native installation guide
+- Revised `FIREWALL_PORTS_GUIDE.md` with current port configuration (8080/8443)
+- Updated `TROUBLESHOOTING.md` with native installation debugging procedures
+- Updated `DEBUGGING_GUIDE.md` to remove container references and add native debugging
+
+#### Port Configuration Updates
+- **BREAKING**: Standardized all documentation on ports 8080 (HTTP) and 8443 (HTTPS)
+- Removed outdated references to port 8089 throughout documentation
+- Updated firewall configuration examples for current port scheme
+- Added comprehensive port security and monitoring documentation
+
+#### Command Reference Updates
+- **BREAKING**: Updated all command examples to use `blocklet server` instead of deprecated `abtnode`
+- Updated CLI package references to `@blocklet/cli` throughout documentation
+- Removed all container/Podman specific debugging procedures
+- Added comprehensive SSH troubleshooting for connection issues
+
+#### Architecture Documentation
+- Added detailed native installation architecture diagrams and explanations
+- Documented complete security implementation with multi-layer approach
+- Added comprehensive monitoring and health check procedures
+- Updated performance characteristics and resource requirements
+
+#### Troubleshooting Enhancements
+- Added SSH connection troubleshooting for "Permission denied (publickey)" errors
+- Updated service debugging procedures for native systemd services
+- Added Node.js/NPM debugging and installation verification steps
+- Removed outdated container and Podman troubleshooting procedures
+
+### 📊 Quality Improvements
+
+#### Documentation Consistency
+- All port references now consistently use 8080/8443
+- Command examples updated to current CLI syntax
+- Removed deprecated package and command references
+- Consistent terminology throughout all documentation files
+
+#### User Experience
+- Clear step-by-step debugging procedures
+- Comprehensive SSH key troubleshooting
+- Updated firewall configuration for all major cloud providers
+- Enhanced security best practices documentation
+
+### ⚠️ Breaking Changes
+
+1. **Port References**: All documentation now uses 8080/8443 instead of 8089
+2. **Command Syntax**: All examples use `blocklet server` commands instead of `abtnode`
+3. **Architecture Focus**: Documentation assumes native installation, not container-based
+
+### 🔄 Migration Notes
+
+#### Documentation Updates
+1. **Port Access**: Update any bookmarks or scripts to use port 8080 instead of 8089
+2. **Command Usage**: Use `blocklet server` commands as shown in updated documentation
+3. **Troubleshooting**: Follow native installation debugging procedures, not container-based
+
+#### Compatibility
+- All procedures tested with current ArcDeploy v4.0+ deployment
+- Documentation aligned with actual implementation
+- Comprehensive coverage of real-world deployment scenarios
+
 ## [4.0.1] - 2025-06-07
 
 ### 🔒 Security Audit and Package Updates
