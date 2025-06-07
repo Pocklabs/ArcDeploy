@@ -1,450 +1,412 @@
-# Firewall and Ports Reference Guide
+# ArcDeploy Firewall and Ports Configuration Guide
 
 ## Overview
 
-This guide covers all firewall and port configurations needed for Arcblock Blocklet Server deployment on Hetzner Cloud. You need to configure **two firewall layers**: Hetzner Cloud's network firewall and the server's UFW firewall.
+This guide covers the complete firewall and port configuration for ArcDeploy's native Blocklet Server installation. The configuration uses UFW (Uncomplicated Firewall) for host-level protection and includes comprehensive security hardening.
 
-## Port Requirements Summary
+## Port Configuration
 
-| Port | Protocol | Purpose | Required | Notes |
-|------|----------|---------|----------|-------|
-| **2222** | TCP | SSH Access | **Critical** | Changed from default 22 for security |
-| **8089** | TCP | Blocklet Server Main Interface | **Critical** | Primary application port |
-| **80** | TCP | HTTP Traffic | **Important** | Redirects to 8089 |
-| **443** | TCP | HTTPS Traffic | **Important** | For SSL/TLS when configured |
+### External Ports (Internet Accessible)
 
-## Hetzner Cloud Firewall Configuration
+| Port | Protocol | Service | Purpose | Required |
+|------|----------|---------|---------|----------|
+| 2222 | TCP | SSH | Secure Shell access | Critical |
+| 8080 | TCP | Blocklet Server | HTTP web interface | Critical |
+| 8443 | TCP | Blocklet Server | HTTPS web interface | Critical |
+| 80 | TCP | Nginx | HTTP proxy/redirect | Important |
+| 443 | TCP | Nginx | HTTPS proxy (if SSL configured) | Important |
 
-### Quick Setup (Recommended)
+### Internal Ports (Local Access Only)
 
-#### 1. Using the Automated Script
-```bash
-# Set your API token
-export HETZNER_API_TOKEN="your-hetzner-api-token"
+| Port | Protocol | Service | Purpose | Access |
+|------|----------|---------|---------|---------|
+| 6379 | TCP | Redis | Database backend | localhost |
+| 22 | TCP | SSH (disabled) | Default SSH (blocked) | None |
 
-# Open access (production ready)
-./hetzner-firewall-setup.sh your-server-name
+## UFW Firewall Configuration
 
-# Restrictive SSH access (your IP only)
-./hetzner-firewall-setup.sh your-server-name restrictive
-
-# List available servers
-./hetzner-firewall-setup.sh list
-
-# Check firewall status
-./hetzner-firewall-setup.sh status
-```
-
-#### 2. Manual Setup via Hetzner Console
-
-**Step 1: Create Firewall**
-1. Go to **Hetzner Cloud Console** → **Firewalls** → **Create Firewall**
-2. Name: `blocklet-server-firewall`
-3. Description: `Firewall for Arcblock Blocklet Server`
-
-**Step 2: Configure Inbound Rules**
-
-| Rule Name | Direction | Protocol | Port | Source IPs | Description |
-|-----------|-----------|----------|------|------------|-------------|
-| SSH | Inbound | TCP | 2222 | 0.0.0.0/0, ::/0 | SSH Access |
-| Blocklet Server | Inbound | TCP | 8089 | 0.0.0.0/0, ::/0 | Main Interface |
-| HTTP | Inbound | TCP | 80 | 0.0.0.0/0, ::/0 | Web Traffic |
-| HTTPS | Inbound | TCP | 443 | 0.0.0.0/0, ::/0 | Secure Web Traffic |
-
-**Step 3: Apply to Server**
-1. Go to your server → **Firewalls** tab
-2. Click **Assign Firewall**
-3. Select your created firewall
-
-### Security Configurations
-
-#### Production Environment (Open Access)
-```json
-{
-  "rules": [
-    {
-      "direction": "in",
-      "port": "2222",
-      "protocol": "tcp", 
-      "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "SSH Access"
-    },
-    {
-      "direction": "in",
-      "port": "8089", 
-      "protocol": "tcp",
-      "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "Blocklet Server"
-    },
-    {
-      "direction": "in",
-      "port": "80",
-      "protocol": "tcp",
-      "source_ips": ["0.0.0.0/0", "::/0"], 
-      "description": "HTTP"
-    },
-    {
-      "direction": "in",
-      "port": "443",
-      "protocol": "tcp",
-      "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "HTTPS"
-    }
-  ]
-}
-```
-
-#### Development Environment (Restricted Access)
-```json
-{
-  "rules": [
-    {
-      "direction": "in",
-      "port": "2222",
-      "protocol": "tcp",
-      "source_ips": ["YOUR_IP/32"],
-      "description": "SSH - Your IP Only"
-    },
-    {
-      "direction": "in", 
-      "port": "8089",
-      "protocol": "tcp",
-      "source_ips": ["YOUR_IP/32"],
-      "description": "Blocklet Server - Your IP Only"
-    }
-  ]
-}
-```
-
-#### Staging Environment (Team Access)
-```json
-{
-  "rules": [
-    {
-      "direction": "in",
-      "port": "2222", 
-      "protocol": "tcp",
-      "source_ips": ["OFFICE_IP/32", "ADMIN_IP/32", "DEV_IP/32"],
-      "description": "SSH - Team Access"
-    },
-    {
-      "direction": "in",
-      "port": "8089",
-      "protocol": "tcp", 
-      "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "Blocklet Server - Public Access"
-    }
-  ]
-}
-```
-
-## Server-Level UFW Firewall
-
-### Current Configuration (Automatic via Cloud-Init)
-
-The cloud-init script automatically configures UFW with these rules:
+### Default Policies
 
 ```bash
-# Reset and configure UFW
-ufw --force reset
-ufw default deny incoming  
-ufw default allow outgoing
+# Default firewall rules applied by ArcDeploy
+ufw default deny incoming    # Block all incoming by default
+ufw default allow outgoing   # Allow all outgoing traffic
+```
+
+### Applied Rules
+
+```bash
+# SSH Access
 ufw allow 2222/tcp comment 'SSH'
-ufw allow 8089/tcp comment 'Blocklet Server'
+
+# Blocklet Server Direct Access
+ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
+
+# Nginx Proxy Access
 ufw allow 80/tcp comment 'HTTP'
 ufw allow 443/tcp comment 'HTTPS'
-ufw --force enable
 ```
 
-### Manual UFW Management
+### Verification Commands
 
-#### Check Current Status
 ```bash
+# Check firewall status
 sudo ufw status verbose
+
+# List numbered rules
+sudo ufw status numbered
+
+# Check active connections
+sudo netstat -tlnp | grep -E "(2222|8080|8443|80|443)"
 ```
 
-#### Modify Rules
+## Port Usage Details
+
+### SSH (Port 2222)
+
+**Purpose**: Secure administrative access
+**Security Features**:
+- Non-standard port to reduce automated attacks
+- Key-only authentication (passwords disabled)
+- Limited to `arcblock` user only
+- Protected by Fail2ban intrusion prevention
+
+**Access Command**:
 ```bash
-# Add new rule
-sudo ufw allow from 192.168.1.0/24 to any port 8089 comment 'Local network access'
-
-# Remove rule
-sudo ufw delete allow 80/tcp
-
-# Insert rule at specific position
-sudo ufw insert 1 allow from YOUR_IP to any port 2222
-
-# Reload firewall
-sudo ufw reload
+ssh -p 2222 arcblock@YOUR_SERVER_IP
 ```
 
-#### Advanced UFW Rules
-```bash
-# Limit SSH connections (rate limiting)
-sudo ufw limit 2222/tcp
-
-# Allow specific IP range for Blocklet Server
-sudo ufw allow from 10.0.0.0/8 to any port 8089
-
-# Log denied connections
-sudo ufw logging on
-
-# Allow outgoing on specific ports only
-sudo ufw default deny outgoing
-sudo ufw allow out 53 comment 'DNS'
-sudo ufw allow out 80 comment 'HTTP'
-sudo ufw allow out 443 comment 'HTTPS'
-sudo ufw allow out 22 comment 'SSH to other servers'
+**Security Configuration**:
+```
+Port 2222
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AllowUsers arcblock
+MaxAuthTries 3
 ```
 
-## Outbound Traffic Requirements
+### Blocklet Server HTTP (Port 8080)
 
-### Required Outbound Ports
+**Purpose**: Primary web interface for Blocklet Server
+**Features**:
+- Direct access to Blocklet Server
+- WebSocket support for real-time features
+- API endpoints and admin interface
+- Protected by application-level authentication
 
-| Port | Protocol | Purpose | Destination |
-|------|----------|---------|-------------|
-| **53** | UDP/TCP | DNS Resolution | DNS Servers |
-| **80** | TCP | HTTP Updates | Package repositories, container registries |
-| **443** | TCP | HTTPS Updates | Secure package repositories, container registries |
-| **22** | TCP | Git/SSH | Code repositories (if needed) |
-| **11371** | TCP | GPG Key Server | Package verification |
+**Access URLs**:
+- Web Interface: `http://YOUR_SERVER_IP:8080`
+- Admin Panel: `http://YOUR_SERVER_IP:8080/.well-known/server/admin/`
+- Health Check: `http://YOUR_SERVER_IP:8080/api/health`
 
-### Container Registry Access
-```bash
-# Docker Hub
-- registry-1.docker.io:443
-- auth.docker.io:443
-- dseasb33srnrn.cloudfront.net:443
+### Blocklet Server HTTPS (Port 8443)
 
-# Quay.io
-- quay.io:443
+**Purpose**: Secure web interface with SSL/TLS encryption
+**Features**:
+- Encrypted communication
+- Certificate-based security
+- Same functionality as HTTP version
+- Preferred for production use
 
-# Red Hat Registry
-- registry.access.redhat.com:443
+**Access URLs**:
+- Secure Interface: `https://YOUR_SERVER_IP:8443`
+- Secure Admin: `https://YOUR_SERVER_IP:8443/.well-known/server/admin/`
+
+### Nginx HTTP Proxy (Port 80)
+
+**Purpose**: Web server proxy and redirect
+**Features**:
+- Reverse proxy to Blocklet Server
+- Static content serving
+- HTTP to HTTPS redirects (when SSL configured)
+- Load balancing capabilities
+
+**Proxy Configuration**:
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
 ```
 
-### Arcblock Specific Requirements
+### Nginx HTTPS Proxy (Port 443)
+
+**Purpose**: Secure web server proxy (when SSL configured)
+**Features**:
+- SSL/TLS termination
+- Secure reverse proxy
+- Certificate management
+- Enhanced security headers
+
+## Cloud Provider Firewall Configuration
+
+### Hetzner Cloud Firewall
+
 ```bash
-# Arcblock services (adjust based on actual requirements)
-- api.arcblock.io:443
-- registry.arcblock.io:443
-- updates.arcblock.io:443
+# Create firewall rules via Hetzner Cloud Console or API
+# Inbound Rules:
+- SSH: TCP/2222, Source: 0.0.0.0/0
+- HTTP: TCP/80, Source: 0.0.0.0/0  
+- HTTPS: TCP/443, Source: 0.0.0.0/0
+- Blocklet HTTP: TCP/8080, Source: 0.0.0.0/0
+- Blocklet HTTPS: TCP/8443, Source: 0.0.0.0/0
+
+# Outbound Rules:
+- All traffic: Allow (for updates and external services)
+```
+
+### AWS Security Groups
+
+```json
+{
+  "SecurityGroupRules": [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 2222,
+      "ToPort": 2222,
+      "CidrIp": "0.0.0.0/0",
+      "Description": "SSH"
+    },
+    {
+      "IpProtocol": "tcp", 
+      "FromPort": 8080,
+      "ToPort": 8080,
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Blocklet Server HTTP"
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 8443, 
+      "ToPort": 8443,
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Blocklet Server HTTPS"
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 80,
+      "ToPort": 80, 
+      "CidrIp": "0.0.0.0/0",
+      "Description": "HTTP"
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "0.0.0.0/0", 
+      "Description": "HTTPS"
+    }
+  ]
+}
+```
+
+### Google Cloud Platform Firewall
+
+```bash
+# Create firewall rules via gcloud CLI
+gcloud compute firewall-rules create arcblock-ssh \
+  --allow tcp:2222 \
+  --source-ranges 0.0.0.0/0 \
+  --description "SSH access"
+
+gcloud compute firewall-rules create arcblock-web \
+  --allow tcp:80,tcp:443,tcp:8080,tcp:8443 \
+  --source-ranges 0.0.0.0/0 \
+  --description "Web access"
+```
+
+## Fail2ban Integration
+
+### Protected Services
+
+```ini
+[sshd]
+enabled = true
+port = 2222
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 5
+bantime = 3600
+
+[nginx-http-auth] 
+enabled = true
+port = http,https
+logpath = /var/log/nginx/error.log
+maxretry = 6
+
+[blocklet-server]
+enabled = true
+port = 8080
+filter = blocklet-server
+logpath = /opt/blocklet-server/logs/*.log
+maxretry = 5
+bantime = 3600
+```
+
+### Custom Filter Patterns
+
+```ini
+# /etc/fail2ban/filter.d/blocklet-server.conf
+[Definition]
+failregex = ^.*\[.*\] .*Failed login attempt from <HOST>.*$
+            ^.*\[.*\] .*Unauthorized access from <HOST>.*$
+            ^.*\[.*\] .*Invalid authentication from <HOST>.*$
+            ^.*\[.*\] .*Blocked request from <HOST>.*$
+ignoreregex = ^.*\[.*\] .*Valid login from <HOST>.*$
 ```
 
 ## Security Best Practices
 
-### 1. Principle of Least Privilege
+### Port Security
+
+1. **Non-Standard Ports**: SSH on 2222 reduces automated attacks
+2. **Service Isolation**: Each service on dedicated ports
+3. **Minimal Exposure**: Only necessary ports open
+4. **Regular Monitoring**: Log analysis for suspicious activity
+
+### Access Control
+
+1. **SSH Key Authentication**: No password authentication
+2. **User Restrictions**: Limited to `arcblock` user
+3. **Application Security**: Blocklet Server has built-in authentication
+4. **Network Segmentation**: Internal services not exposed
+
+### Monitoring and Logging
+
 ```bash
-# Only open required ports
-# Use specific IP ranges when possible
-# Regularly audit firewall rules
-```
+# Monitor failed connection attempts
+sudo tail -f /var/log/auth.log | grep "Failed password"
 
-### 2. Layered Security
-```bash
-# Network Level: Hetzner Cloud Firewall
-# Server Level: UFW Firewall  
-# Application Level: Container security
-# Access Level: SSH keys only
-```
-
-### 3. Monitoring and Alerting
-```bash
-# Enable UFW logging
-sudo ufw logging medium
-
-# Monitor failed connections
-sudo tail -f /var/log/ufw.log
-
-# Check fail2ban status
+# Check Fail2ban status
 sudo fail2ban-client status
 
-# Monitor active connections
-sudo netstat -tuln
-sudo ss -tuln
+# Monitor nginx access logs
+sudo tail -f /var/log/nginx/access.log
+
+# Check UFW logs
+sudo tail -f /var/log/ufw.log
 ```
 
-### 4. Regular Security Updates
-```bash
-# Firewall rules audit
-sudo ufw --dry-run reset
+## Troubleshooting Port Issues
 
-# Check for unused rules
-sudo ufw status numbered
+### Connection Refused
 
-# Review fail2ban logs
-sudo fail2ban-client status sshd
-sudo fail2ban-client status blocklet-server
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Cannot SSH to Server
-```bash
-# Check Hetzner Cloud firewall allows port 2222
-# Verify UFW allows port 2222
-sudo ufw status | grep 2222
-
-# Test connectivity
-telnet YOUR_SERVER_IP 2222
-nc -zv YOUR_SERVER_IP 2222
-```
-
-#### 2. Cannot Access Blocklet Server
 ```bash
 # Check if service is running
 sudo systemctl status blocklet-server
+sudo systemctl status nginx
 
-# Check if port is listening
-sudo netstat -tlnp | grep :8089
-sudo ss -tlnp | grep :8089
-
-# Check firewall rules
-sudo ufw status | grep 8089
+# Verify ports are listening
+sudo netstat -tlnp | grep -E "(8080|2222|80|443)"
 
 # Test local connectivity
-curl -I http://localhost:8089
+curl -I http://localhost:8080
 ```
 
-#### 3. Firewall Rules Not Working
+### Firewall Blocking
+
 ```bash
-# Reload UFW
-sudo ufw reload
-
-# Check UFW is enabled
-sudo ufw status
-
-# Check for conflicting iptables rules
-sudo iptables -L -n
-
-# Reset UFW completely
-sudo ufw --force reset
-# Then reconfigure using cloud-init commands
-```
-
-### Diagnostic Commands
-
-#### Network Connectivity
-```bash
-# Test external connectivity
-ping -c 4 8.8.8.8
-curl -I https://google.com
-
-# Check DNS resolution
-nslookup arcblock.io
-dig arcblock.io
-
-# Trace network path
-traceroute YOUR_SERVER_IP
-mtr YOUR_SERVER_IP
-```
-
-#### Port Testing
-```bash
-# From external machine
-nmap -p 2222,8089,80,443 YOUR_SERVER_IP
-
-# From server (internal)
-sudo netstat -tuln
-sudo ss -tuln
-lsof -i :8089
-```
-
-#### Firewall Status
-```bash
-# UFW detailed status
+# Check UFW status
 sudo ufw status verbose
-sudo ufw show raw
 
-# Fail2ban status
-sudo fail2ban-client status
-sudo fail2ban-client status sshd
-
-# Check active connections
-sudo netstat -an | grep ESTABLISHED
-```
-
-## Quick Reference Commands
-
-### Hetzner Cloud API
-```bash
-# List firewalls
-curl -H "Authorization: Bearer $HETZNER_API_TOKEN" \
-  https://api.hetzner.cloud/v1/firewalls
-
-# Get firewall details
-curl -H "Authorization: Bearer $HETZNER_API_TOKEN" \
-  https://api.hetzner.cloud/v1/firewalls/FIREWALL_ID
-
-# Apply firewall to server
-curl -X POST \
-  -H "Authorization: Bearer $HETZNER_API_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"resources":[{"server":{"id":SERVER_ID},"type":"server"}]}' \
-  https://api.hetzner.cloud/v1/firewalls/FIREWALL_ID/actions/apply_to_resources
-```
-
-### UFW Quick Commands
-```bash
-# Enable/disable
-sudo ufw enable
+# Temporarily disable UFW for testing (NOT recommended for production)
 sudo ufw disable
 
-# Status
-sudo ufw status
-sudo ufw status verbose
-sudo ufw status numbered
+# Check iptables rules
+sudo iptables -L -n
 
-# Add/remove rules
-sudo ufw allow PORT
-sudo ufw deny PORT  
-sudo ufw delete RULE_NUMBER
-
-# Reset
+# Reset UFW rules if needed
 sudo ufw --force reset
 ```
 
-### Testing Access
+### DNS and Routing Issues
+
 ```bash
-# SSH test
-ssh -p 2222 -o ConnectTimeout=10 arcblock@YOUR_SERVER_IP
+# Test external connectivity
+curl -I http://YOUR_SERVER_IP:8080
 
-# HTTP test
-curl -m 10 http://YOUR_SERVER_IP:8089/api/did
+# Check DNS resolution
+nslookup YOUR_DOMAIN
 
-# Port scan
-nmap -p 2222,8089,80,443 YOUR_SERVER_IP
+# Verify routing
+traceroute YOUR_SERVER_IP
 ```
 
-## IPv6 Considerations
+## Advanced Configuration
 
-### IPv6 Firewall Rules
-All firewall rules should include both IPv4 and IPv6:
-```
-IPv4: 0.0.0.0/0
-IPv6: ::/0
+### Custom Port Configuration
+
+To change default ports, modify these files:
+
+1. **Blocklet Server Port**: Edit systemd service environment variables
+2. **Nginx Ports**: Modify `/etc/nginx/sites-available/blocklet-server`
+3. **UFW Rules**: Update firewall rules accordingly
+4. **Fail2ban**: Update port configurations in jail files
+
+### SSL/TLS Configuration
+
+```nginx
+server {
+    listen 443 ssl http2;
+    ssl_certificate /path/to/certificate.crt;
+    ssl_certificate_key /path/to/private.key;
+    
+    location / {
+        proxy_pass https://127.0.0.1:8443;
+        proxy_ssl_verify off;
+    }
+}
 ```
 
-### UFW IPv6 Support
+### Load Balancing
+
+```nginx
+upstream blocklet_servers {
+    server 127.0.0.1:8080;
+    server 127.0.0.1:8081;  # Additional instances
+}
+
+server {
+    location / {
+        proxy_pass http://blocklet_servers;
+    }
+}
+```
+
+## Maintenance Commands
+
+### Regular Checks
+
 ```bash
-# Ensure IPv6 is enabled in UFW
-sudo nano /etc/default/ufw
-# Set: IPV6=yes
+# Weekly firewall audit
+sudo ufw status numbered > /var/log/ufw-audit-$(date +%Y%m%d).log
 
-# Reload UFW
-sudo ufw reload
+# Monthly port scan from external source
+nmap -p 22,80,443,2222,8080,8443 YOUR_SERVER_IP
+
+# Daily log review
+sudo grep "DENY" /var/log/ufw.log | tail -20
 ```
 
-### Testing IPv6 Connectivity
+### Emergency Procedures
+
 ```bash
-# Test IPv6 connectivity
-ping6 YOUR_SERVER_IPV6
-curl -6 http://[YOUR_SERVER_IPV6]:8089
+# Emergency firewall disable (use with caution)
+sudo ufw disable
 
-# SSH via IPv6
-ssh -p 2222 arcblock@[YOUR_SERVER_IPV6]
+# Reset all firewall rules
+sudo ufw --force reset
+
+# Emergency SSH access via cloud console if locked out
+# Access via cloud provider's web console/VNC
 ```
 
-This guide covers all aspects of firewall and port configuration for your Arcblock Blocklet Server deployment. Always test connectivity after making firewall changes and maintain security best practices.
+## Conclusion
+
+ArcDeploy's firewall configuration provides robust security while maintaining accessibility for legitimate users. The multi-layered approach combining UFW, Fail2ban, and application-level security ensures comprehensive protection against various attack vectors.
+
+Regular monitoring and maintenance of firewall rules are essential for maintaining security posture. Always test changes in a development environment before applying to production systems.

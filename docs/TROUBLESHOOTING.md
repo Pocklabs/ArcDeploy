@@ -1,6 +1,6 @@
 # ArcDeploy Troubleshooting Guide
 
-This comprehensive guide covers debugging and troubleshooting common issues with ArcDeploy Blocklet Server deployments.
+This comprehensive guide covers debugging and troubleshooting common issues with ArcDeploy's native Blocklet Server deployments.
 
 ## Quick Diagnostics
 
@@ -27,11 +27,11 @@ id arcblock
 # 3. Check service status
 sudo systemctl status blocklet-server
 
-# 4. Check containers
-sudo -u arcblock podman ps
+# 4. Check Blocklet CLI installation
+which blocklet && blocklet --version
 
 # 5. Check API endpoint
-curl -f http://localhost:8089/api/did
+curl -f http://localhost:8080/api/health
 ```
 
 ## Common Issues and Solutions
@@ -48,6 +48,195 @@ sudo cloud-init status --long
 ```bash
 # Check detailed logs
 sudo cat /var/log/cloud-init.log | tail -50
+sudo cat /var/log/cloud-init-output.log | tail -50
+
+# Check for specific errors
+sudo grep -i error /var/log/cloud-init.log
+sudo grep -i fail /var/log/cloud-init-output.log
+```
+
+**Common Solutions:**
+```bash
+# 1. Check YAML syntax
+python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
+
+# 2. Verify user creation
+sudo cat /etc/passwd | grep arcblock
+
+# 3. Check package installation
+dpkg -l | grep -E "(nodejs|nginx|redis)"
+
+# 4. Manual recovery
+sudo cloud-init clean --logs
+sudo cloud-init init
+```
+
+### 2. SSH Connection Issues
+
+#### Issue: "Permission denied (publickey)" when connecting
+
+**Most Common Cause:** SSH key placeholder not replaced
+
+**Check SSH Key Configuration:**
+```bash
+# Verify SSH key in cloud-init.yaml
+grep "ssh-ed25519" cloud-init.yaml
+# Should show YOUR actual key, not placeholder
+```
+
+**Fix SSH Key:**
+```bash
+# 1. Display your public key
+cat ~/.ssh/id_ed25519.pub
+
+# 2. Replace placeholder in cloud-init.yaml
+sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_PUBLIC_KEY/' cloud-init.yaml
+
+# 3. Redeploy server with corrected configuration
+```
+
+**Alternative Fixes:**
+```bash
+# Connect using correct format
+ssh -p 2222 arcblock@YOUR_SERVER_IP
+
+# Add key manually via cloud console
+sudo -u arcblock mkdir -p /home/arcblock/.ssh
+echo "YOUR_SSH_PUBLIC_KEY" | sudo tee -a /home/arcblock/.ssh/authorized_keys
+sudo chown -R arcblock:arcblock /home/arcblock/.ssh
+sudo chmod 700 /home/arcblock/.ssh
+sudo chmod 600 /home/arcblock/.ssh/authorized_keys
+```
+
+### 3. Blocklet Server Service Issues
+
+#### Issue: Service fails to start or stops unexpectedly
+
+**Check Service Status:**
+```bash
+# Service status
+sudo systemctl status blocklet-server
+
+# Detailed logs
+sudo journalctl -u blocklet-server -f
+
+# Check if CLI is installed
+which blocklet
+blocklet --version
+```
+
+**Common Solutions:**
+```bash
+# 1. Verify CLI installation
+npm list -g @blocklet/cli
+
+# 2. Check configuration
+sudo -u arcblock ls -la /opt/blocklet-server/
+
+# 3. Manual service restart
+sudo systemctl restart blocklet-server
+
+# 4. Check service configuration
+sudo cat /etc/systemd/system/blocklet-server.service
+```
+
+#### Issue: Wrong command in systemd service
+
+**Fix Command Path:**
+```bash
+# Check current ExecStart command
+sudo grep ExecStart /etc/systemd/system/blocklet-server.service
+
+# Should show: ExecStart=/usr/local/bin/blocklet server start
+# If shows old 'abtnode' command, update service file
+
+sudo systemctl daemon-reload
+sudo systemctl restart blocklet-server
+```
+
+### 4. Port and Network Issues
+
+#### Issue: Cannot access web interface
+
+**Check Port Configuration:**
+```bash
+# Verify correct ports are listening
+sudo netstat -tlnp | grep -E "(8080|8443)"
+
+# Test local connectivity
+curl -I http://localhost:8080
+
+# Check firewall rules
+sudo ufw status | grep -E "(8080|8443)"
+```
+
+**Port Migration Fix:**
+The current version uses ports 8080/8443, not 8089. Update any references:
+
+```bash
+# Test current endpoint
+curl http://YOUR_SERVER_IP:8080
+
+# NOT the old port
+# curl http://YOUR_SERVER_IP:8089  # This won't work
+```
+
+#### Issue: Nginx proxy not working
+
+**Check Nginx Configuration:**
+```bash
+# Test nginx configuration
+sudo nginx -t
+
+# Check if nginx is running
+sudo systemctl status nginx
+
+# Verify proxy configuration
+sudo cat /etc/nginx/sites-available/blocklet-server
+
+# Should proxy to 127.0.0.1:8080, not 8089
+```
+
+### 5. Package Installation Issues
+
+#### Issue: @blocklet/cli installation fails
+
+**Diagnosis:**
+```bash
+# Check npm configuration
+npm config list
+
+# Verify Node.js version
+node --version
+
+# Check npm permissions
+npm list -g --depth=0
+```
+
+**Solutions:**
+```bash
+# 1. Reinstall CLI
+npm uninstall -g @blocklet/cli
+npm install -g @blocklet/cli
+
+# 2. Clear npm cache
+npm cache clean --force
+
+# 3. Fix npm permissions
+sudo chown -R $(whoami) ~/.npm
+```
+
+#### Issue: Old package references
+
+**Check for deprecated packages:**
+```bash
+# Should NOT find any @arcblock/cli references
+npm list -g | grep arcblock
+
+# If found, remove old package
+npm uninstall -g @arcblock/cli
+npm install -g @blocklet/cli
+```
 sudo cat /var/log/cloud-init-output.log | tail -50
 
 # Check what configuration was used
