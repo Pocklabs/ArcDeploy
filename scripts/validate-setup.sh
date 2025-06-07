@@ -334,7 +334,7 @@ if command -v node > /dev/null 2>&1; then
     check_info "Node.js version: $node_version"
 fi
 
-sudo -u arcblock npm list -g @arcblock/cli > /dev/null 2>&1
+sudo -u arcblock npm list -g @blocklet/cli > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     check_status 0 "Blocklet CLI is installed"
     cli_version=$(sudo -u arcblock npx abtnode --version 2>/dev/null || echo "unknown")

@@ -108,8 +108,8 @@ sudo -u arcblock systemctl --user start podman.socket
 check_success "Started Podman socket"
 
 log "Step 7: Installing Blocklet CLI..."
-sudo -u arcblock npm install -g @arcblock/cli
-check_success "Installed @arcblock/cli"
+sudo -u arcblock npm install -g @blocklet/cli
+check_success "Installed @blocklet/cli"
 
 log "Step 8: Pulling container image..."
 sudo -u arcblock podman pull arcblock/blocklet-server:latest

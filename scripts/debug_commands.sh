@@ -71,8 +71,8 @@ node --version 2>/dev/null || echo "Node.js not found"
 npm --version 2>/dev/null || echo "npm not found"
 echo ""
 
-echo "15. Check if @arcblock/cli is installed:"
-sudo -u arcblock npm list -g @arcblock/cli 2>/dev/null || echo "@arcblock/cli not installed"
+echo "15. Check if @blocklet/cli is installed:"
+sudo -u arcblock npm list -g @blocklet/cli 2>/dev/null || echo "@blocklet/cli not installed"
 echo ""
 
 echo "16. Check subuid/subgid configuration:"

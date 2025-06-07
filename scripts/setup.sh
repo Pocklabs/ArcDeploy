@@ -121,7 +121,7 @@ sudo -u $USER systemctl --user start podman.socket || error_exit "Failed to star
 
 # Install Blocklet CLI
 log "Installing Blocklet CLI"
-sudo -u $USER npm install -g @arcblock/cli || warning "Blocklet CLI installation failed"
+sudo -u $USER npm install -g @blocklet/cli || warning "Blocklet CLI installation failed"
 
 # Pull Blocklet Server image
 log "Pulling Blocklet Server container image"
