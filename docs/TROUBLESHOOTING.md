@@ -328,7 +328,7 @@ sudo -u arcblock systemctl --user enable podman.socket
 sudo -u arcblock systemctl --user start podman.socket
 
 # Install CLI and pull image
-sudo -u arcblock npm install -g @arcblock/cli
+sudo -u arcblock npm install -g @blocklet/cli
 sudo -u arcblock podman pull arcblock/blocklet-server:latest
 
 # Start service
