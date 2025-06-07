@@ -2,6 +2,64 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.1] - 2025-06-07
+
+### 🔒 Security Audit and Package Updates
+
+#### Comprehensive Security Verification
+- **SECURITY**: Conducted complete security audit of entire project
+- **SECURITY**: Verified zero exposed SSH keys or email addresses remain
+- **SECURITY**: Confirmed git history sanitization is complete and effective
+- Validated all placeholder SSH keys use safe template format
+- Verified no sensitive data exists in any project files
+
+#### Package Management Updates
+- **BREAKING**: Updated all scripts to use `@blocklet/cli` instead of deprecated `@arcblock/cli`
+- Updated `scripts/debug_commands.sh` to check for correct CLI package
+- Updated `scripts/manual_recovery.sh` to install current CLI package
+- Updated `scripts/setup.sh` to install current CLI package
+- Updated `scripts/validate-setup.sh` to validate current CLI package
+- Updated `docs/TROUBLESHOOTING.md` manual recovery instructions
+- Ensured consistency across all documentation and automation scripts
+
+#### Server Requirements Simplification
+- **BREAKING**: Simplified server requirements to focus only on hardware specifications
+- Removed extensive cloud provider lists for cleaner documentation
+- Streamlined requirements to essential CPU, RAM, storage, and network specs
+- Maintained universal cloud provider compatibility without vendor-specific details
+- Enhanced clarity by focusing on actual technical requirements
+
+### 📊 Quality Improvements
+
+#### Documentation Consistency
+- All references now use current `@blocklet/cli` package name
+- Consistent SSH key placeholder format throughout project
+- Streamlined server requirements documentation
+- Enhanced security transparency with audit documentation
+
+#### Repository Health
+- Zero security vulnerabilities detected in comprehensive audit
+- All deprecated package references resolved
+- Clean working tree with proper git history
+- Complete alignment between documentation and implementation
+
+### ⚠️ Breaking Changes
+
+1. **Package Name**: All scripts now require `@blocklet/cli` instead of `@arcblock/cli`
+2. **Server Requirements**: Simplified format may require documentation updates for integrations
+
+### 🔄 Migration Notes
+
+#### Package Updates
+1. **CLI Installation**: Use `npm install -g @blocklet/cli` instead of `@arcblock/cli`
+2. **Script Compatibility**: All automation scripts updated to use current package
+3. **Documentation**: Manual procedures updated to reference correct package name
+
+#### Security Verification
+- No action required - all security issues have been resolved
+- Previous git history sanitization remains effective
+- All current files contain only safe placeholder data
+
 ## [4.0.0] - 2025-06-07
 
 ### 🚀 Major Project Restructuring
