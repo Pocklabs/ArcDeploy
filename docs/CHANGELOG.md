@@ -1,6 +1,101 @@
 # Changelog
 
-All notable changes to the Arcblock Blocklet Server cloud-init configuration are documented in this file.
+All notable changes to the ArcDeploy project are documented in this file.
+
+## [4.0.0] - 2025-06-07
+
+### 🚀 Major Project Restructuring
+
+#### Complete Project Simplification
+- **BREAKING**: Removed all deployment methods except native installation
+- **BREAKING**: Deleted `full-featured.yaml`, `minimal.yaml`, `standard.yaml`, `standard-docker.yaml`
+- **BREAKING**: Renamed `cloud-init/native-install.yaml` to `cloud-init.yaml` in root directory
+- **BREAKING**: Removed entire `cloud-init/` subdirectory for simplified structure
+- Focused project on single, proven working approach for better maintainability
+
+#### Security Cleanup and Key Management
+- **SECURITY**: Complete removal of exposed SSH keys from entire git history
+- **SECURITY**: Removed all instances of `pocklabs@pocklabs.com` from repository history
+- Used `git-filter-repo` to rewrite complete git history and remove sensitive data
+- Standardized all SSH key placeholders to `your-email@example.com` format
+- Added `Log.md` to `.gitignore` to prevent accidental commit of debug logs
+
+#### Documentation Overhaul
+- **BREAKING**: Complete rewrite of README.md to focus on native installation only
+- **BREAKING**: Updated QUICK_START.md to streamlined 10-minute deployment guide
+- Removed confusion from multiple deployment options
+- Added prominent Work In Progress notice with current project status
+- Enhanced documentation clarity with single deployment path
+
+#### Server Requirements Expansion
+- **BREAKING**: Increased minimum requirements to 4 vCPUs, 8GB RAM, 80GB storage
+- **BREAKING**: Increased recommended requirements to 8 vCPUs, 16GB RAM, 160GB storage
+- Made requirements cloud-agnostic, supporting any hosting provider
+- Added comprehensive list of compatible cloud providers (AWS, GCP, Azure, DigitalOcean, etc.)
+- Included self-hosted and bare metal deployment options
+- Removed Hetzner-specific focus for universal compatibility
+
+### 🔧 Project Structure Improvements
+
+#### Simplified Architecture
+- Single `cloud-init.yaml` configuration file in root directory
+- Eliminated decision paralysis with multiple configuration options
+- Focused testing and development efforts on proven working solution
+- Streamlined maintenance with single deployment path
+
+#### Enhanced Cloud Provider Support
+- Universal compatibility with any Ubuntu 22.04 + cloud-init provider
+- Support for major clouds: AWS, Google Cloud, Azure, DigitalOcean, Linode, Vultr
+- Specialized provider support: Scaleway, UpCloud, Contabo, Time4VPS
+- Self-hosted options: Proxmox, VMware, OpenStack, KVM/QEMU
+
+#### File Organization
+- Moved primary configuration to root level for easier access
+- Preserved `scripts/` and `docs/` directories
+- Maintained clean project structure with focused purpose
+- Added comprehensive `.gitignore` for debug files
+
+### 📊 Quality and Security Improvements
+
+#### Git History Cleanup
+- Complete removal of sensitive data from all commits
+- Rewritten git history with no exposed credentials
+- Sanitized commit diffs and merge history
+- Force-pushed clean history to remote repository
+
+#### Documentation Quality
+- Clear deployment instructions with exact commands
+- Streamlined quick start guide for 10-minute deployment
+- Comprehensive troubleshooting section
+- Universal provider compatibility documentation
+
+#### Resource Planning
+- More generous resource allocations for reliable performance
+- Future-proof specifications for scaling
+- Clear bandwidth and network requirements
+- SSD storage requirements for optimal performance
+
+### ⚠️ Breaking Changes
+
+1. **Project Structure**: Only `cloud-init.yaml` remains, all other configurations removed
+2. **File Location**: Configuration moved from `cloud-init/native-install.yaml` to `cloud-init.yaml`
+3. **Server Requirements**: Doubled minimum requirements for better performance
+4. **Provider Focus**: No longer Hetzner-specific, universal cloud provider support
+5. **Git History**: Complete history rewrite removes all previous commits with sensitive data
+
+### 🔄 Migration Notes
+
+#### Repository Updates
+1. **File Location**: Update references from `cloud-init/native-install.yaml` to `cloud-init.yaml`
+2. **Documentation**: All deployment guides now reference single configuration file
+3. **Server Specs**: Review server specifications against new minimum requirements
+4. **Provider Choice**: Expand deployment options beyond Hetzner Cloud
+
+#### Compatibility
+- Fully compatible with existing Blocklet Server installations
+- Enhanced reliability with focused development approach
+- Better resource allocation for improved performance
+- Universal cloud provider compatibility
 
 ## [3.0.0] - 2025-06-15
 
