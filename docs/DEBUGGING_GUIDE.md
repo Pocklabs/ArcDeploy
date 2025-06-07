@@ -1,6 +1,6 @@
 # ArcDeploy Debugging Guide
 
-Complete troubleshooting guide for cloud-init and Blocklet Server deployment issues.
+Complete troubleshooting guide for ArcDeploy's native Blocklet Server deployment issues.
 
 ## 🚨 Emergency Quick Start
 
@@ -15,16 +15,31 @@ sudo tail -50 /var/log/cloud-init.log | grep -i error
 
 # Check Blocklet Server status
 sudo systemctl status blocklet-server
+
+# Check Blocklet CLI installation
+which blocklet && blocklet --version
+
+# Test web interface
+curl -I http://localhost:8080
 ```
 
 ## 📋 Common Deployment Issues
 
-### 1. Cannot SSH to Instance
+### 1. SSH Connection Problems
 
 **Symptoms:**
+- "Permission denied (publickey)" error
 - Connection refused on port 2222
-- Permission denied
 - SSH timeout
+
+**Most Common Cause:** SSH key placeholder not replaced in cloud-init.yaml
+
+**Check SSH Key Configuration:**
+```bash
+# Verify SSH key was replaced in cloud-init.yaml
+grep "ssh-ed25519" cloud-init.yaml
+# Should show YOUR actual key, not "IReplaceWithYourActualEd25519PublicKey"
+```
 
 **Debugging Steps:**
 ```bash
@@ -38,15 +53,28 @@ sudo sshd -T | grep -i passwordauth
 # Check firewall status
 sudo ufw status verbose
 
+# Check user exists
+id arcblock
+
 # Check SSH logs
 sudo journalctl -u ssh -f
 ```
 
 **Solutions:**
-- Verify SSH key format matches template exactly
-- Check that port 2222 is open in cloud provider firewall
-- Verify user `arcblock` was created successfully
-- Try SSH with `-v` flag for verbose output
+```bash
+# 1. Fix SSH key in cloud-init.yaml and redeploy
+sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_PUBLIC_KEY/' cloud-init.yaml
+
+# 2. Manual key addition via cloud console
+sudo -u arcblock mkdir -p /home/arcblock/.ssh
+echo "YOUR_SSH_PUBLIC_KEY" | sudo tee -a /home/arcblock/.ssh/authorized_keys
+sudo chown -R arcblock:arcblock /home/arcblock/.ssh
+sudo chmod 700 /home/arcblock/.ssh
+sudo chmod 600 /home/arcblock/.ssh/authorized_keys
+
+# 3. Connect with correct format
+ssh -p 2222 arcblock@YOUR_SERVER_IP
+```
 
 ### 2. Cloud-Init Never Started
 
@@ -159,8 +187,8 @@ sudo apt update
 
 **Symptoms:**
 - `systemctl status blocklet-server` shows failed
-- Container won't start
-- Port 8089 not accessible
+- Service exits immediately
+- Port 8080 not accessible
 
 **Debugging Steps:**
 ```bash
@@ -168,52 +196,80 @@ sudo apt update
 sudo systemctl status blocklet-server -l
 sudo journalctl -u blocklet-server -f
 
-# Check container status
-sudo -u arcblock podman ps -a
-sudo -u arcblock podman logs blocklet-server
+# Check Blocklet CLI installation
+which blocklet
+blocklet --version
 
-# Check Podman configuration
-sudo -u arcblock podman system info
-sudo -u arcblock podman version
+# Check service configuration
+sudo cat /etc/systemd/system/blocklet-server.service
+
+# Check Blocklet Server process
+sudo ps aux | grep blocklet
 
 # Check port binding
-sudo netstat -tlnp | grep 8089
-sudo ss -tlnp | grep 8089
+sudo netstat -tlnp | grep 8080
+sudo ss -tlnp | grep 8080
+
+# Test local endpoint
+curl -I http://localhost:8080
 ```
 
 **Solutions:**
-- Verify Podman is properly configured for rootless
-- Check if required ports are available
-- Verify container image was pulled successfully
-- Check compose file syntax
+```bash
+# 1. Verify CLI is installed correctly
+npm list -g @blocklet/cli
 
-### 7. Container/Podman Issues
+# 2. Check service file ExecStart path
+sudo grep ExecStart /etc/systemd/system/blocklet-server.service
+# Should show: ExecStart=/usr/local/bin/blocklet server start
+
+# 3. Restart service with daemon reload
+sudo systemctl daemon-reload
+sudo systemctl restart blocklet-server
+
+# 4. Check Blocklet Server initialization
+sudo -u arcblock ls -la /opt/blocklet-server/
+```
+
+### 7. Node.js/NPM Issues
 
 **Symptoms:**
-- Podman commands fail
-- Container creation errors
-- Storage issues
+- Blocklet CLI not found
+- npm permission errors
+- Node.js version conflicts
 
 **Debugging Steps:**
 ```bash
-# Check Podman system status
-sudo -u arcblock podman system info
-sudo -u arcblock podman system df
+# Check Node.js installation
+node --version
+npm --version
 
-# Check user namespace configuration
-sudo cat /etc/subuid | grep arcblock
-sudo cat /etc/subgid | grep arcblock
+# Check npm global packages
+npm list -g --depth=0
 
-# Check container storage
-sudo -u arcblock podman system prune
-sudo -u arcblock podman volume ls
+# Check npm configuration
+npm config list
+
+# Check PATH includes npm globals
+echo $PATH | grep npm
 ```
 
 **Solutions:**
-- Reset Podman storage: `podman system reset`
-- Verify user namespaces are configured
-- Check disk space for container storage
-- Restart user linger: `sudo loginctl enable-linger arcblock`
+```bash
+# 1. Reinstall Node.js from NodeSource
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 2. Fix npm permissions
+sudo chown -R $(whoami) ~/.npm
+
+# 3. Reinstall Blocklet CLI
+npm uninstall -g @blocklet/cli
+npm install -g @blocklet/cli
+
+# 4. Verify installation
+which blocklet && blocklet --version
+```
 
 ## 📊 Log Analysis
 
