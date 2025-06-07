@@ -230,56 +230,26 @@ netstat -tlnp | grep -E "(8080|8443|2222)"
 
 ## ⚙️ Server Requirements
 
-### Minimum Requirements
-- **CPU:** 4 vCPUs
+### Minimum Hardware Requirements
+- **CPU:** 4 cores / 4 vCPUs
 - **RAM:** 8GB
 - **Storage:** 80GB SSD
 - **Network:** 1Gbps connection
 - **Bandwidth:** Unlimited or generous allowance
 
-### Recommended Requirements
-- **CPU:** 8 vCPUs
+### Recommended Hardware Requirements
+- **CPU:** 8 cores / 8 vCPUs
 - **RAM:** 16GB
 - **Storage:** 160GB SSD
 - **Network:** 1Gbps+ connection
 - **Bandwidth:** Unlimited
 
-### Operating System Support
-- **Primary:** Ubuntu 22.04 LTS (tested and recommended)
+### System Requirements
+- **Operating System:** Ubuntu 22.04 LTS
 - **Architecture:** x86_64 (ARM not currently supported)
 - **Cloud-Init:** Required for automated deployment
-
-### Compatible Cloud Providers
-
-ArcDeploy works with any cloud provider that supports Ubuntu 22.04 and cloud-init:
-
-**Major Cloud Providers:**
-- **Hetzner Cloud** - CX31+ (primary testing platform)
-- **DigitalOcean** - Basic Droplets with cloud-init
-- **AWS EC2** - Ubuntu 22.04 AMIs (t3.large+)
-- **Google Cloud Platform** - Compute Engine instances
-- **Microsoft Azure** - Ubuntu 22.04 VMs
-- **Linode** - Shared or Dedicated instances
-- **Vultr** - Cloud Compute with cloud-init
-- **OVHcloud** - Public Cloud instances
-
-**Specialized Providers:**
-- **Scaleway** - DEV1/GP1 instances
-- **UpCloud** - Cloud servers
-- **Contabo** - VPS with cloud-init support
-- **Time4VPS** - Cloud instances
-
-**Self-Hosted/Bare Metal:**
-- **Proxmox** with cloud-init templates
-- **VMware vSphere** with cloud-init
-- **OpenStack** deployments
-- **Any KVM/QEMU** setup with cloud-init
-
-**Requirements for All Providers:**
-- Ubuntu 22.04 LTS support
-- Cloud-init capability
-- Outbound internet access for package installation
-- SSH access capability
+- **Internet Access:** Required for package installation
+- **SSH Access:** Required for management
 
 ## 🛡️ Security Features
 
