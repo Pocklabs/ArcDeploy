@@ -14,7 +14,7 @@
 > 
 > ---
 
-**One-Click Arcblock Blocklet Server Deployment for Hetzner Cloud**
+**One-Click Arcblock Blocklet Server Deployment for Any Cloud Provider**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
@@ -27,7 +27,7 @@ Deploy a production-ready Arcblock Blocklet Server in under 10 minutes:
 
 1. **Generate SSH key pair**
 2. **Replace placeholder in `cloud-init.yaml`**
-3. **Deploy to Hetzner Cloud**
+3. **Deploy to your cloud provider**
 4. **Access your server**
 
 ```bash
@@ -41,7 +41,7 @@ ssh-keygen -t ed25519 -C "your-email@example.com"
 # 3. Replace SSH key placeholder
 sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_PUBLIC_KEY/' cloud-init.yaml
 
-# 4. Deploy via Hetzner Cloud Console (paste cloud-init.yaml content)
+# 4. Deploy via your cloud provider (paste cloud-init.yaml content)
 ```
 
 ## ✨ Features
@@ -231,20 +231,55 @@ netstat -tlnp | grep -E "(8080|8443|2222)"
 ## ⚙️ Server Requirements
 
 ### Minimum Requirements
-- **CPU:** 2 vCPUs
-- **RAM:** 4GB
-- **Storage:** 40GB SSD
-- **Server Type:** Hetzner CX31 or equivalent
-
-### Recommended Requirements
 - **CPU:** 4 vCPUs
 - **RAM:** 8GB
 - **Storage:** 80GB SSD
-- **Server Type:** Hetzner CX41 or equivalent
+- **Network:** 1Gbps connection
+- **Bandwidth:** Unlimited or generous allowance
 
-### Operating System
-- Ubuntu 22.04 LTS (tested and recommended)
-- x86_64 architecture (ARM not currently supported)
+### Recommended Requirements
+- **CPU:** 8 vCPUs
+- **RAM:** 16GB
+- **Storage:** 160GB SSD
+- **Network:** 1Gbps+ connection
+- **Bandwidth:** Unlimited
+
+### Operating System Support
+- **Primary:** Ubuntu 22.04 LTS (tested and recommended)
+- **Architecture:** x86_64 (ARM not currently supported)
+- **Cloud-Init:** Required for automated deployment
+
+### Compatible Cloud Providers
+
+ArcDeploy works with any cloud provider that supports Ubuntu 22.04 and cloud-init:
+
+**Major Cloud Providers:**
+- **Hetzner Cloud** - CX31+ (primary testing platform)
+- **DigitalOcean** - Basic Droplets with cloud-init
+- **AWS EC2** - Ubuntu 22.04 AMIs (t3.large+)
+- **Google Cloud Platform** - Compute Engine instances
+- **Microsoft Azure** - Ubuntu 22.04 VMs
+- **Linode** - Shared or Dedicated instances
+- **Vultr** - Cloud Compute with cloud-init
+- **OVHcloud** - Public Cloud instances
+
+**Specialized Providers:**
+- **Scaleway** - DEV1/GP1 instances
+- **UpCloud** - Cloud servers
+- **Contabo** - VPS with cloud-init support
+- **Time4VPS** - Cloud instances
+
+**Self-Hosted/Bare Metal:**
+- **Proxmox** with cloud-init templates
+- **VMware vSphere** with cloud-init
+- **OpenStack** deployments
+- **Any KVM/QEMU** setup with cloud-init
+
+**Requirements for All Providers:**
+- Ubuntu 22.04 LTS support
+- Cloud-init capability
+- Outbound internet access for package installation
+- SSH access capability
 
 ## 🛡️ Security Features
 
