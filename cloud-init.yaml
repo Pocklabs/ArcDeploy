@@ -49,12 +49,12 @@ write_files:
       Group=arcblock
       WorkingDirectory=/opt/blocklet-server
       Environment=NODE_ENV=production
-      Environment=ABT_NODE_LOG_LEVEL=info
-      Environment=ABT_NODE_HOST=0.0.0.0
-      Environment=ABT_NODE_PORT=8089
-      Environment=ABT_NODE_DATA_DIR=/opt/blocklet-server/data
-      Environment=ABT_NODE_CONFIG_DIR=/opt/blocklet-server/config
-      ExecStart=/usr/local/bin/abtnode start
+      Environment=BLOCKLET_LOG_LEVEL=info
+      Environment=BLOCKLET_HOST=0.0.0.0
+      Environment=BLOCKLET_PORT=8080
+      Environment=BLOCKLET_DATA_DIR=/opt/blocklet-server/data
+      Environment=BLOCKLET_CONFIG_DIR=/opt/blocklet-server/config
+      ExecStart=/usr/local/bin/blocklet server start --config-dir /opt/blocklet-server/config
       Restart=always
       RestartSec=10
       StandardOutput=journal
@@ -74,7 +74,7 @@ write_files:
           server_name _;
 
           location / {
-              proxy_pass http://127.0.0.1:8089;
+              proxy_pass http://127.0.0.1:8080;
               proxy_http_version 1.1;
               proxy_set_header Upgrade $http_upgrade;
               proxy_set_header Connection 'upgrade';
@@ -112,7 +112,7 @@ write_files:
 
       [blocklet-server]
       enabled = true
-      port = 8089
+      port = 8080
       filter = blocklet-server
       logpath = /opt/blocklet-server/logs/*.log
       maxretry = 5
@@ -152,7 +152,7 @@ write_files:
           log "INFO: Waiting for Blocklet Server to become ready..."
 
           while [ $attempts -lt $MAX_ATTEMPTS ]; do
-              if curl -sf --max-time 10 http://localhost:8089 >/dev/null 2>&1; then
+              if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
                   log "INFO: Blocklet Server is ready and responding"
                   return 0
               fi
@@ -271,7 +271,8 @@ runcmd:
   - apt-get install -y nodejs
 
   # Install Blocklet CLI globally
-  - npm install -g @blocklet/cli
+  - npm install -g @blocklet/cli || { echo "Failed to install @blocklet/cli"; exit 1; }
+  - which blocklet || { echo "Blocklet CLI not found in PATH"; exit 1; }
 
   # Configure Redis
   - systemctl enable redis-server
@@ -285,15 +286,18 @@ runcmd:
   - systemctl start nginx
 
   # Initialize Blocklet Server
-  - sudo -u arcblock abtnode init /opt/blocklet-server --skip-download || echo "Using alternative initialization"
-  - sudo -u arcblock mkdir -p /opt/blocklet-server/{bin,data,config}
+  - sudo -u arcblock blocklet server init /opt/blocklet-server || echo "Server init failed, using manual setup"
+  - sudo -u arcblock mkdir -p /opt/blocklet-server/{bin,data,config,logs}
+  - sudo -u arcblock blocklet server config set dataDir /opt/blocklet-server/data || true
+  - sudo -u arcblock blocklet server config set port 8080 || true
 
   # Setup firewall
   - ufw --force reset
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw allow 2222/tcp comment 'SSH'
-  - ufw allow 8089/tcp comment 'Blocklet Server'
+  - ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+  - ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
   - ufw allow 80/tcp comment 'HTTP'
   - ufw allow 443/tcp comment 'HTTPS'
   - ufw --force enable
@@ -332,7 +336,7 @@ runcmd:
     max_attempts=24
     
     while [ $attempts -lt $max_attempts ]; do
-        if curl -sf --max-time 10 http://localhost:8089 >/dev/null 2>&1; then
+        if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
             echo "Blocklet Server is ready and responding!"
             break
         fi
@@ -380,7 +384,8 @@ final_message: |
   
   Access Information:
   - SSH: ssh -p 2222 arcblock@YOUR_SERVER_IP
-  - Web Interface: http://YOUR_SERVER_IP:8089
+  - Web Interface: http://YOUR_SERVER_IP:8080
+  - Secure Web Interface: https://YOUR_SERVER_IP:8443
   - Nginx Proxy: http://YOUR_SERVER_IP (port 80)
   - Service Status: systemctl status blocklet-server
   - Health Check: /opt/blocklet-server/healthcheck.sh
