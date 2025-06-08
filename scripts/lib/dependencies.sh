@@ -6,11 +6,13 @@
 readonly DEPS_LIB_VERSION="1.0.0"
 # Only set if not already set to avoid readonly errors
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
-    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    readonly SCRIPT_DIR
 fi
 
 if [[ -z "${PROJECT_ROOT:-}" ]]; then
-    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    readonly PROJECT_ROOT
 fi
 readonly DEPS_CACHE_DIR="/tmp/arcdeploy-deps-cache"
 readonly DEPS_LOG_FILE="/var/log/arcdeploy-dependencies.log"
@@ -98,10 +100,8 @@ get_command_version() {
     for flag in "--version" "-v" "-V" "version"; do
         if version_output=$($command $flag 2>/dev/null); then
             # Extract version number using various patterns
-            local version
-            version=$(echo "$version_output" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
-            if [ -n "$version" ]; then
-                echo "$version"
+            echo "$version_output" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1
+            if [[ ${PIPESTATUS[1]} -eq 0 ]]; then
                 return 0
             fi
         fi
@@ -458,7 +458,8 @@ generate_dependency_report() {
             local category_name="${category_names[$i]}"
             
             echo "$category_name:"
-            echo "$(printf '=%.0s' $(seq 1 ${#category_name}))"
+            printf '=%.0s' $(seq 1 ${#category_name})
+            echo
             
             local -n deps_ref="$category"
             for dep_name in "${!deps_ref[@]}"; do

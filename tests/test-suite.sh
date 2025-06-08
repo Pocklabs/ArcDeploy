@@ -7,8 +7,10 @@ set -euo pipefail
 
 # Test suite metadata
 readonly TEST_SUITE_VERSION="1.0.0"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+readonly PROJECT_ROOT
 readonly TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
 readonly TEST_CONFIGS_DIR="$SCRIPT_DIR/configs"
 readonly TEST_LOGS_DIR="$TEST_RESULTS_DIR/logs"
@@ -143,7 +145,7 @@ setup_test_environment() {
     mkdir -p "$TEST_CONFIGS_DIR"
     
     # Clear previous test logs
-    > "$TEST_LOGS_DIR/test-suite.log"
+    true > "$TEST_LOGS_DIR/test-suite.log"
     
     log "Setting up test environment..."
     
@@ -698,6 +700,9 @@ main() {
     local quiet=false
     local generate_report=false
     local fail_fast=false
+    
+    # Export variables for use by test functions
+    export verbose debug_mode quiet
     
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do

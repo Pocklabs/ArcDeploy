@@ -10,11 +10,13 @@ readonly SCRIPT_VERSION="1.0.0"
 
 # Only set if not already set to avoid readonly errors
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
-    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    readonly SCRIPT_DIR
 fi
 
 if [[ -z "${PROJECT_ROOT:-}" ]]; then
-    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    readonly PROJECT_ROOT
 fi
 readonly TEMPLATES_DIR="$PROJECT_ROOT/templates"
 readonly CONFIG_DIR="$PROJECT_ROOT/config"
@@ -586,7 +588,8 @@ main() {
     # Generate optional configurations
     if [ -n "$domain" ]; then
         export SERVER_NAME="$domain"
-        export NGINX_HTTPS_CONFIG=$(generate_ssl_config "$domain" "$email")
+        NGINX_HTTPS_CONFIG=$(generate_ssl_config "$domain" "$email")
+        export NGINX_HTTPS_CONFIG
         export ENABLE_SSL="true"
     else
         export SERVER_NAME="_"
@@ -596,13 +599,16 @@ main() {
     
     # Set additional configurations
     export ADDITIONAL_PACKAGES="${ADDITIONAL_PACKAGES:-}"
-    export CLOUD_PROVIDER_CONFIGS=$(generate_provider_configs "$provider" "$region")
-    export CLOUD_PROVIDER_COMMANDS=$(generate_provider_commands "$provider" "$domain" "$email")
+    CLOUD_PROVIDER_CONFIGS=$(generate_provider_configs "$provider" "$region")
+    export CLOUD_PROVIDER_CONFIGS
+    CLOUD_PROVIDER_COMMANDS=$(generate_provider_commands "$provider" "$domain" "$email")
+    export CLOUD_PROVIDER_COMMANDS
     export ADDITIONAL_UFW_RULES=""
     export ADDITIONAL_SSH_KEYS=""
     
     # Add timestamp and metadata
-    export GENERATED_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+    GENERATED_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+    export GENERATED_TIMESTAMP
     export GENERATOR_VERSION="$SCRIPT_VERSION"
     
     # Process template

@@ -8,11 +8,13 @@ readonly COMMON_LIB_VERSION="1.0.0"
 
 # Only set if not already set to avoid readonly errors
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
-    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    readonly SCRIPT_DIR
 fi
 
 if [[ -z "${PROJECT_ROOT:-}" ]]; then
-    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    readonly PROJECT_ROOT
 fi
 
 # Load configuration if available
@@ -321,7 +323,7 @@ wait_for_service() {
     log "Waiting for $description to be ready..."
     
     local attempts=0
-    while [ $attempts -lt $max_attempts ]; do
+    while [ $attempts -lt "$max_attempts" ]; do
         if systemctl is-active --quiet "$service"; then
             success "$description is ready"
             return 0
@@ -366,7 +368,7 @@ wait_for_http_endpoint() {
     log "Waiting for $description to respond..."
     
     local attempts=0
-    while [ $attempts -lt $max_attempts ]; do
+    while [ $attempts -lt "$max_attempts" ]; do
         if curl -sf --max-time "$timeout" "$url" >/dev/null 2>&1; then
             success "$description is responding"
             return 0
@@ -448,6 +450,7 @@ backup_file() {
 
 # Load environment variables from config
 load_config() {
+    # shellcheck disable=SC2120
     local config_file="${1:-$PROJECT_ROOT/config/arcdeploy.conf}"
     
     if [ -f "$config_file" ]; then
@@ -508,12 +511,12 @@ retry_with_backoff() {
     local command=("${@:3}")
     
     local attempt=1
-    while [ $attempt -le $max_attempts ]; do
+    while [ $attempt -le "$max_attempts" ]; do
         if "${command[@]}"; then
             return 0
         fi
         
-        if [ $attempt -lt $max_attempts ]; then
+        if [ $attempt -lt "$max_attempts" ]; then
             warning "Command failed (attempt $attempt/$max_attempts), retrying in ${delay}s..."
             sleep "$delay"
             delay=$((delay * 2))  # Exponential backoff
@@ -543,7 +546,7 @@ init_common_lib() {
     fi
     
     # Load configuration
-    load_config
+    load_config "$@"
     
     debug "Common library v$COMMON_LIB_VERSION initialized"
 }
