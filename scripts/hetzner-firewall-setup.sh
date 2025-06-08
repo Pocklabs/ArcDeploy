@@ -7,7 +7,6 @@ set -euo pipefail
 
 # Configuration
 FIREWALL_NAME="blocklet-server-firewall"
-FIREWALL_DESCRIPTION="Firewall for Arcblock Blocklet Server - SSH, HTTP, HTTPS, Blocklet Server"
 
 # Colors for output
 RED='\033[0;31m'

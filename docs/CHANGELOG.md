@@ -2,6 +2,41 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.5] - 2025-01-27
+
+### 🔧 Code Quality and Shell Script Improvements
+
+#### Shell Script Standards Compliance
+- **ENHANCEMENT**: Fixed all ShellCheck warnings in `scripts/validate-setup.sh` for better shell script compliance
+- Refactored 17 `$?` variable references to use direct conditional checks following modern shell scripting best practices
+- Improved script reliability by avoiding potential variable overwriting issues
+- Enhanced code readability with explicit conditional logic for test commands
+
+#### Script Maintenance
+- **FIX**: Resolved incomplete firewall description variable in `scripts/hetzner-firewall-setup.sh`
+- Removed unused `FIREWALL_DESCRIPTION` variable to eliminate ShellCheck warnings
+- Cleaned up script configuration section for better maintainability
+
+#### Code Review Compliance
+- Zero syntax errors and warnings remaining across all shell scripts
+- All scripts now follow modern shell scripting standards and best practices
+- Enhanced error handling and validation throughout the validation script
+- Improved script documentation and code structure
+
+### 📊 Quality Improvements
+
+#### Development Standards
+- Complete ShellCheck compliance for all shell scripts
+- Enhanced script reliability and maintainability
+- Improved error handling and validation procedures
+- Better code documentation and structure
+
+#### Testing and Validation
+- All validation checks now use proper conditional logic
+- Enhanced script execution reliability
+- Improved error reporting and status checking
+- Better integration with automated testing workflows
+
 ## [4.0.4] - 2025-06-08
 
 ### 📚 Troubleshooting Guide Complete Overhaul

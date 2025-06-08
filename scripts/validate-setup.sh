@@ -46,7 +46,8 @@ check_info() {
 # Test 1: Cloud-Init Status
 echo "1. Checking Cloud-Init Status"
 cloud-init status --wait > /dev/null 2>&1
-check_status $? "Cloud-init completed successfully"
+cloud_init_status=$?
+check_status $cloud_init_status "Cloud-init completed successfully"
 
 if [ -f "/var/log/cloud-init-output.log" ]; then
     check_status 0 "Cloud-init output log exists"
@@ -66,35 +67,48 @@ echo
 # Test 2: User and Permissions Setup
 echo "2. Checking User Setup"
 id arcblock > /dev/null 2>&1
-check_status $? "User 'arcblock' exists"
+user_exists=$?
+check_status $user_exists "User 'arcblock' exists"
 
 groups arcblock | grep -q sudo > /dev/null 2>&1
-check_status $? "User 'arcblock' has sudo privileges"
+sudo_check=$?
+check_status $sudo_check "User 'arcblock' has sudo privileges"
 
-[ -d "/home/arcblock" ]
-check_status $? "Home directory exists for arcblock user"
+if [ -d "/home/arcblock" ]; then
+    check_status 0 "Home directory exists for arcblock user"
+else
+    check_status 1 "Home directory exists for arcblock user"
+fi
 
 stat -c "%U:%G" /home/arcblock | grep -q "arcblock:arcblock" > /dev/null 2>&1
-check_status $? "Home directory has correct ownership"
+ownership_check=$?
+check_status $ownership_check "Home directory has correct ownership"
 
 echo
 
 # Test 3: SSH Configuration
 echo "3. Checking SSH Configuration"
 grep -q "PermitRootLogin no" /etc/ssh/sshd_config > /dev/null 2>&1
-check_status $? "Root login is disabled"
+root_login_check=$?
+check_status $root_login_check "Root login is disabled"
 
 grep -q "PasswordAuthentication no" /etc/ssh/sshd_config > /dev/null 2>&1
-check_status $? "Password authentication is disabled"
+password_auth_check=$?
+check_status $password_auth_check "Password authentication is disabled"
 
 grep -q "Port 2222" /etc/ssh/sshd_config > /dev/null 2>&1
-check_status $? "SSH port is set to 2222"
+ssh_port_check=$?
+check_status $ssh_port_check "SSH port is set to 2222"
 
 grep -q "AllowUsers arcblock" /etc/ssh/sshd_config > /dev/null 2>&1
-check_status $? "SSH access restricted to arcblock user"
+allow_users_check=$?
+check_status $allow_users_check "SSH access restricted to arcblock user"
 
-[ -f "/home/arcblock/.ssh/authorized_keys" ]
-check_status $? "SSH authorized_keys file exists"
+if [ -f "/home/arcblock/.ssh/authorized_keys" ]; then
+    check_status 0 "SSH authorized_keys file exists"
+else
+    check_status 1 "SSH authorized_keys file exists"
+fi
 
 if [ -f "/home/arcblock/.ssh/authorized_keys" ]; then
     key_count=$(wc -l < /home/arcblock/.ssh/authorized_keys)
@@ -106,32 +120,40 @@ if [ -f "/home/arcblock/.ssh/authorized_keys" ]; then
 fi
 
 systemctl is-active --quiet ssh
-check_status $? "SSH service is running"
+ssh_service_check=$?
+check_status $ssh_service_check "SSH service is running"
 
 echo
 
 # Test 4: Firewall Configuration
 echo "4. Checking Firewall Configuration"
 command -v ufw > /dev/null 2>&1
-check_status $? "UFW is installed"
+ufw_installed=$?
+check_status $ufw_installed "UFW is installed"
 
 ufw status | grep -q "Status: active" > /dev/null 2>&1
-check_status $? "UFW firewall is active"
+ufw_active=$?
+check_status $ufw_active "UFW firewall is active"
 
 ufw status | grep -q "2222" > /dev/null 2>&1
-check_status $? "Port 2222 (SSH) is allowed"
+ufw_ssh_port=$?
+check_status $ufw_ssh_port "Port 2222 (SSH) is allowed"
 
 ufw status | grep -q "8080" > /dev/null 2>&1
-check_status $? "Port 8080 (Blocklet Server HTTP) is allowed"
+ufw_http_port=$?
+check_status $ufw_http_port "Port 8080 (Blocklet Server HTTP) is allowed"
 
 ufw status | grep -q "8443" > /dev/null 2>&1
-check_status $? "Port 8443 (Blocklet Server HTTPS) is allowed"
+ufw_https_port=$?
+check_status $ufw_https_port "Port 8443 (Blocklet Server HTTPS) is allowed"
 
 ufw status | grep -q "80" > /dev/null 2>&1
-check_status $? "Port 80 (HTTP) is allowed"
+ufw_port_80=$?
+check_status $ufw_port_80 "Port 80 (HTTP) is allowed"
 
 ufw status | grep -q "443" > /dev/null 2>&1
-check_status $? "Port 443 (HTTPS) is allowed"
+ufw_port_443=$?
+check_status $ufw_port_443 "Port 443 (HTTPS) is allowed"
 
 # Check if old SSH port 22 is closed
 if ufw status | grep -q "22/tcp" > /dev/null 2>&1 && ! ufw status | grep -q "2222" > /dev/null 2>&1; then
@@ -143,29 +165,40 @@ echo
 # Test 5: Fail2Ban Setup
 echo "5. Checking Fail2Ban Configuration"
 command -v fail2ban-client > /dev/null 2>&1
-check_status $? "Fail2ban is installed"
+fail2ban_installed=$?
+check_status $fail2ban_installed "Fail2ban is installed"
 
 systemctl is-active --quiet fail2ban > /dev/null 2>&1
-check_status $? "Fail2ban service is running"
+fail2ban_active=$?
+check_status $fail2ban_active "Fail2ban service is running"
 
-[ -f "/etc/fail2ban/jail.local" ]
-check_status $? "Fail2ban local configuration exists"
+if [ -f "/etc/fail2ban/jail.local" ]; then
+    check_status 0 "Fail2ban local configuration exists"
+else
+    check_status 1 "Fail2ban local configuration exists"
+fi
 
-[ -f "/etc/fail2ban/filter.d/blocklet-server.conf" ]
-check_status $? "Blocklet Server fail2ban filter exists"
+if [ -f "/etc/fail2ban/filter.d/blocklet-server.conf" ]; then
+    check_status 0 "Blocklet Server fail2ban filter exists"
+else
+    check_status 1 "Blocklet Server fail2ban filter exists"
+fi
 
 fail2ban-client status 2>/dev/null | grep -q "sshd" > /dev/null 2>&1
-check_status $? "SSH protection is enabled in fail2ban"
+ssh_protection_check=$?
+check_status $ssh_protection_check "SSH protection is enabled in fail2ban"
 
 echo
 
 # Test 6: Node.js Installation and Configuration
 echo "6. Checking Node.js Installation"
 command -v node > /dev/null 2>&1
-check_status $? "Node.js is installed"
+node_installed=$?
+check_status $node_installed "Node.js is installed"
 
 command -v npm > /dev/null 2>&1
-check_status $? "npm is installed"
+npm_installed=$?
+check_status $npm_installed "npm is installed"
 
 if command -v node > /dev/null 2>&1; then
     node_version=$(node --version 2>/dev/null)
@@ -190,13 +223,16 @@ echo
 # Test 7: Blocklet CLI Installation
 echo "7. Checking Blocklet CLI Installation"
 command -v blocklet > /dev/null 2>&1
-check_status $? "Blocklet CLI is in PATH"
+blocklet_in_path=$?
+check_status $blocklet_in_path "Blocklet CLI is in PATH"
 
 sudo -u arcblock blocklet --version > /dev/null 2>&1
-check_status $? "Blocklet CLI accessible by arcblock user"
+blocklet_accessible=$?
+check_status $blocklet_accessible "Blocklet CLI accessible by arcblock user"
 
 sudo -u arcblock npm list -g @blocklet/cli > /dev/null 2>&1
-check_status $? "@blocklet/cli package is installed globally"
+blocklet_cli_installed=$?
+check_status $blocklet_cli_installed "@blocklet/cli package is installed globally"
 
 if sudo -u arcblock blocklet --version > /dev/null 2>&1; then
     cli_version=$(sudo -u arcblock blocklet --version 2>/dev/null)
@@ -207,39 +243,63 @@ echo
 
 # Test 8: Directory Structure
 echo "8. Checking Directory Structure"
-[ -d "/opt/blocklet-server" ]
-check_status $? "Main Blocklet Server directory exists"
+if [ -d "/opt/blocklet-server" ]; then
+    check_status 0 "Main Blocklet Server directory exists"
+else
+    check_status 1 "Main Blocklet Server directory exists"
+fi
 
-[ -d "/opt/blocklet-server/data" ]
-check_status $? "Data directory exists"
+if [ -d "/opt/blocklet-server/data" ]; then
+    check_status 0 "Data directory exists"
+else
+    check_status 1 "Data directory exists"
+fi
 
-[ -d "/opt/blocklet-server/config" ]
-check_status $? "Config directory exists"
+if [ -d "/opt/blocklet-server/config" ]; then
+    check_status 0 "Config directory exists"
+else
+    check_status 1 "Config directory exists"
+fi
 
-[ -d "/opt/blocklet-server/logs" ]
-check_status $? "Logs directory exists"
+if [ -d "/opt/blocklet-server/logs" ]; then
+    check_status 0 "Logs directory exists"
+else
+    check_status 1 "Logs directory exists"
+fi
 
 stat -c "%U:%G" /opt/blocklet-server | grep -q "arcblock:arcblock" > /dev/null 2>&1
-check_status $? "Blocklet Server directory has correct ownership"
+dir_ownership_check=$?
+check_status $dir_ownership_check "Blocklet Server directory has correct ownership"
 
-[ -f "/opt/blocklet-server/healthcheck.sh" ]
-check_status $? "Health check script exists"
+if [ -f "/opt/blocklet-server/healthcheck.sh" ]; then
+    check_status 0 "Health check script exists"
+else
+    check_status 1 "Health check script exists"
+fi
 
-[ -x "/opt/blocklet-server/healthcheck.sh" ]
-check_status $? "Health check script is executable"
+if [ -x "/opt/blocklet-server/healthcheck.sh" ]; then
+    check_status 0 "Health check script is executable"
+else
+    check_status 1 "Health check script is executable"
+fi
 
 echo
 
 # Test 9: Service Configuration
 echo "9. Checking Service Configuration"
-[ -f "/etc/systemd/system/blocklet-server.service" ]
-check_status $? "Blocklet Server systemd service file exists"
+if [ -f "/etc/systemd/system/blocklet-server.service" ]; then
+    check_status 0 "Blocklet Server systemd service file exists"
+else
+    check_status 1 "Blocklet Server systemd service file exists"
+fi
 
-systemctl is-enabled --quiet blocklet-server > /dev/null 2>&1
-check_status $? "Blocklet Server service is enabled"
+systemctl is-enabled blocklet-server > /dev/null 2>&1
+service_enabled_check=$?
+check_status $service_enabled_check "Blocklet Server service is enabled"
 
-systemctl is-active --quiet blocklet-server > /dev/null 2>&1
-check_status $? "Blocklet Server service is running"
+systemctl is-active blocklet-server > /dev/null 2>&1
+service_active_check=$?
+check_status $service_active_check "Blocklet Server service is active"
 
 # Check service configuration
 if grep -q "User=arcblock" /etc/systemd/system/blocklet-server.service 2>/dev/null; then
@@ -253,19 +313,28 @@ echo
 # Test 10: Nginx Configuration
 echo "10. Checking Nginx Configuration"
 command -v nginx > /dev/null 2>&1
-check_status $? "Nginx is installed"
+nginx_installed=$?
+check_status $nginx_installed "Nginx is installed"
 
 systemctl is-active --quiet nginx > /dev/null 2>&1
-check_status $? "Nginx service is running"
+nginx_active=$?
+check_status $nginx_active "Nginx service is running"
 
-[ -f "/etc/nginx/sites-available/blocklet-server" ]
-check_status $? "Nginx site configuration exists"
+if [ -f "/etc/nginx/sites-available/blocklet-server" ]; then
+    check_status 0 "Nginx site configuration exists"
+else
+    check_status 1 "Nginx site configuration exists"
+fi
 
-[ -L "/etc/nginx/sites-enabled/blocklet-server" ]
-check_status $? "Nginx site is enabled"
+if [ -L "/etc/nginx/sites-enabled/blocklet-server" ]; then
+    check_status 0 "Nginx site is enabled"
+else
+    check_status 1 "Nginx site is enabled"
+fi
 
 nginx -t > /dev/null 2>&1
-check_status $? "Nginx configuration is valid"
+nginx_config_valid=$?
+check_status $nginx_config_valid "Nginx configuration is valid"
 
 # Check nginx version for required modules
 nginx_version=$(nginx -v 2>&1 | grep -o '[0-9]\+\.[0-9]\+')
@@ -278,13 +347,16 @@ echo
 # Test 11: Redis Configuration
 echo "11. Checking Redis Configuration"
 command -v redis-server > /dev/null 2>&1
-check_status $? "Redis is installed"
+redis_installed=$?
+check_status $redis_installed "Redis is installed"
 
-systemctl is-active --quiet redis-server > /dev/null 2>&1
-check_status $? "Redis service is running"
+systemctl is-active --quiet redis > /dev/null 2>&1 || systemctl is-active --quiet redis-server > /dev/null 2>&1
+redis_active=$?
+check_status $redis_active "Redis service is running"
 
 redis-cli ping > /dev/null 2>&1
-check_status $? "Redis is responding to ping"
+redis_ping_check=$?
+check_status $redis_ping_check "Redis is responding to ping"
 
 echo
 
@@ -292,35 +364,41 @@ echo
 echo "12. Checking Network Connectivity"
 # Test if ports are listening
 netstat -tlnp 2>/dev/null | grep -q ":2222" > /dev/null 2>&1
-check_status $? "SSH port 2222 is listening"
+ssh_port_listening=$?
+check_status $ssh_port_listening "SSH port 2222 is listening"
 
 netstat -tlnp 2>/dev/null | grep -q ":8080" > /dev/null 2>&1
-if [ $? -eq 0 ]; then
+port_8080_check=$?
+if [ $port_8080_check -eq 0 ]; then
     check_status 0 "Blocklet Server port 8080 is listening"
 else
     check_warning "Port 8080 is not listening (service may be starting)"
 fi
 
 netstat -tlnp 2>/dev/null | grep -q ":8443" > /dev/null 2>&1
-if [ $? -eq 0 ]; then
+port_8443_check=$?
+if [ $port_8443_check -eq 0 ]; then
     check_status 0 "Blocklet Server HTTPS port 8443 is listening"
 else
     check_warning "Port 8443 is not listening (HTTPS may not be configured)"
 fi
 
 netstat -tlnp 2>/dev/null | grep -q ":80" > /dev/null 2>&1
-check_status $? "Nginx HTTP port 80 is listening"
+nginx_port_80_check=$?
+check_status $nginx_port_80_check "Nginx port 80 is listening"
 
 # Test HTTP endpoints
 curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+http_endpoint_check=$?
+if [ $http_endpoint_check -eq 0 ]; then
     check_status 0 "Blocklet Server HTTP endpoint is responding"
 else
     check_warning "Blocklet Server HTTP endpoint not responding (may still be initializing)"
 fi
 
 curl -sf --max-time 10 http://localhost:80 >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+nginx_proxy_check=$?
+if [ $nginx_proxy_check -eq 0 ]; then
     check_status 0 "Nginx proxy is responding"
 else
     check_warning "Nginx proxy not responding properly"
@@ -365,15 +443,22 @@ echo
 
 # Test 14: Monitoring and Health Checks
 echo "14. Checking Monitoring and Health Checks"
-[ -f "/opt/blocklet-server/healthcheck.sh" ]
-check_status $? "Health check script exists"
+if [ -f "/opt/blocklet-server/healthcheck.sh" ]; then
+    check_status 0 "Health check script exists"
+else
+    check_status 1 "Health check script exists"
+fi
 
-[ -x "/opt/blocklet-server/healthcheck.sh" ]
-check_status $? "Health check script is executable"
+if [ -x "/opt/blocklet-server/healthcheck.sh" ]; then
+    check_status 0 "Health check script is executable"
+else
+    check_status 1 "Health check script is executable"
+fi
 
 # Check cron jobs
 sudo -u arcblock crontab -l 2>/dev/null | grep -q "healthcheck.sh" > /dev/null 2>&1
-check_status $? "Health check cron job is configured"
+cron_check=$?
+check_status $cron_check "Health check cron job is configured"
 
 # Try running health check
 if sudo -u arcblock /opt/blocklet-server/healthcheck.sh > /dev/null 2>&1; then
@@ -386,8 +471,11 @@ echo
 
 # Test 15: Log Files and Health
 echo "15. Checking Logs and Health"
-[ -f "/var/log/cloud-init.log" ]
-check_status $? "Cloud-init log exists"
+if [ -f "/var/log/cloud-init.log" ]; then
+    check_status 0 "Cloud-init log exists"
+else
+    check_status 1 "Cloud-init log exists"
+fi
 
 # Check if health check has run
 if [ -f "/opt/blocklet-server/logs/health.log" ]; then
@@ -414,8 +502,11 @@ echo
 
 # Test 16: Installation Completion
 echo "16. Checking Installation Completion"
-[ -f "/opt/blocklet-server/.native-install-complete" ]
-check_status $? "Native installation completion marker exists"
+if [ -f "/opt/blocklet-server/.native-install-complete" ]; then
+    check_status 0 "Native installation completion marker exists"
+else
+    check_status 1 "Native installation completion marker exists"
+fi
 
 # Check Blocklet Server configuration
 if sudo -u arcblock blocklet server config list > /dev/null 2>&1; then
