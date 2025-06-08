@@ -2,6 +2,42 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.4] - 2025-06-08
+
+### 📚 Troubleshooting Guide Complete Overhaul
+
+#### Comprehensive Native Installation Troubleshooting
+- **BREAKING**: Completely rewrote `docs/TROUBLESHOOTING.md` to align with native installation architecture
+- Removed all container/Podman/Docker troubleshooting procedures and references
+- Updated all port references from 8089 to 8080/8443 throughout troubleshooting procedures
+- Added comprehensive native service debugging and recovery procedures
+- Enhanced diagnostic procedures with 10 major troubleshooting categories
+- Added Redis backend troubleshooting and validation procedures
+- Integrated nginx proxy troubleshooting and configuration validation
+
+#### Enhanced Recovery Procedures
+- Updated manual recovery procedures for native installation architecture
+- Added partial recovery procedures for individual service failures
+- Enhanced automated diagnostic and log collection procedures
+- Added comprehensive system health validation and monitoring
+- Integrated performance troubleshooting and optimization guidance
+- Added security validation and configuration verification procedures
+
+#### Advanced Debugging Capabilities
+- Added comprehensive log collection and analysis procedures
+- Enhanced health check automation and monitoring guidance
+- Added real-time performance monitoring and optimization procedures
+- Integrated advanced security validation and compliance checking
+- Added emergency recovery procedures for complete system failures
+- Enhanced support documentation with clear escalation procedures
+
+#### Documentation Quality Improvements
+- Zero legacy container references remaining in troubleshooting documentation
+- 100% alignment with current native installation architecture
+- Complete integration with updated debug scripts and validation tools
+- Enhanced user experience with clear step-by-step procedures
+- Comprehensive coverage of all native installation components and services
+
 ## [4.0.3] - 2025-06-08
 
 ### 🔧 Debug Scripts Comprehensive Update

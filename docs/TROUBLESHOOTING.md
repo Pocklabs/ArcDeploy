@@ -30,8 +30,17 @@ sudo systemctl status blocklet-server
 # 4. Check Blocklet CLI installation
 which blocklet && blocklet --version
 
-# 5. Check API endpoint
-curl -f http://localhost:8080/api/health
+# 5. Check HTTP endpoint
+curl -f http://localhost:8080
+
+# 6. Check HTTPS endpoint
+curl -k -f https://localhost:8443
+
+# 7. Check nginx proxy
+curl -f http://localhost:80
+
+# 8. Check Redis backend
+redis-cli ping
 ```
 
 ## Common Issues and Solutions
@@ -48,126 +57,248 @@ sudo cloud-init status --long
 ```bash
 # Check detailed logs
 sudo cat /var/log/cloud-init.log | tail -50
+
+# Check output logs
 sudo cat /var/log/cloud-init-output.log | tail -50
 
-# Check for specific errors
-sudo grep -i error /var/log/cloud-init.log
-sudo grep -i fail /var/log/cloud-init-output.log
+# Check for YAML syntax errors
+sudo cloud-init schema --config-file /etc/cloud/cloud.cfg.d/50-curtin-networking.cfg
+
+# Check specific cloud-init modules
+sudo cloud-init single --name runcmd
 ```
 
-**Common Solutions:**
+**Common Causes:**
+- YAML syntax errors in cloud-init configuration
+- Network connectivity issues during package installation
+- Insufficient disk space or memory
+- Package repository unavailability
+
+**Solutions:**
 ```bash
-# 1. Check YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
-
-# 2. Verify user creation
-sudo cat /etc/passwd | grep arcblock
-
-# 3. Check package installation
-dpkg -l | grep -E "(nodejs|nginx|redis)"
-
-# 4. Manual recovery
-sudo cloud-init clean --logs
+# Fix common YAML issues
+sudo cloud-init clean --logs --seed
+sudo cloud-init init --local
 sudo cloud-init init
+sudo cloud-init modules --mode config
+sudo cloud-init modules --mode final
+
+# Manual package installation if needed
+sudo apt-get update
+sudo apt-get install -y nodejs nginx redis-server
 ```
 
-### 2. SSH Connection Issues
+### 2. User Creation Issues
 
-#### Issue: "Permission denied (publickey)" when connecting
-
-**Most Common Cause:** SSH key placeholder not replaced
-
-**Check SSH Key Configuration:**
+#### Issue: arcblock user not created or lacks permissions
 ```bash
-# Verify SSH key in cloud-init.yaml
-grep "ssh-ed25519" cloud-init.yaml
-# Should show YOUR actual key, not placeholder
+id arcblock
+# Shows: id: 'arcblock': no such user
 ```
 
-**Fix SSH Key:**
+**Diagnosis:**
 ```bash
-# 1. Display your public key
-cat ~/.ssh/id_ed25519.pub
+# Check if user exists
+grep arcblock /etc/passwd
 
-# 2. Replace placeholder in cloud-init.yaml
-sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com/YOUR_ACTUAL_SSH_PUBLIC_KEY/' cloud-init.yaml
+# Check sudo permissions
+sudo -l -U arcblock
 
-# 3. Redeploy server with corrected configuration
+# Check group memberships
+groups arcblock
+
+# Check home directory
+ls -la /home/arcblock
 ```
 
-**Alternative Fixes:**
+**Solutions:**
 ```bash
-# Connect using correct format
-ssh -p 2222 arcblock@YOUR_SERVER_IP
+# Create user manually
+sudo useradd -m -G users,admin,sudo -s /bin/bash arcblock
+echo "arcblock ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/arcblock
 
-# Add key manually via cloud console
-sudo -u arcblock mkdir -p /home/arcblock/.ssh
-echo "YOUR_SSH_PUBLIC_KEY" | sudo tee -a /home/arcblock/.ssh/authorized_keys
+# Set up SSH keys
+sudo mkdir -p /home/arcblock/.ssh
+echo "YOUR_PUBLIC_KEY_HERE" | sudo tee /home/arcblock/.ssh/authorized_keys
 sudo chown -R arcblock:arcblock /home/arcblock/.ssh
 sudo chmod 700 /home/arcblock/.ssh
 sudo chmod 600 /home/arcblock/.ssh/authorized_keys
 ```
 
-### 3. Blocklet Server Service Issues
+### 3. SSH Connection Issues
 
-#### Issue: Service fails to start or stops unexpectedly
-
-**Check Service Status:**
+#### Issue: Cannot connect via SSH on port 2222
 ```bash
-# Service status
-sudo systemctl status blocklet-server
-
-# Detailed logs
-sudo journalctl -u blocklet-server -f
-
-# Check if CLI is installed
-which blocklet
-blocklet --version
+ssh -p 2222 arcblock@YOUR_SERVER_IP
+# Shows: Connection refused or Permission denied
 ```
 
-**Common Solutions:**
+**Diagnosis:**
 ```bash
-# 1. Verify CLI installation
+# Check SSH service status
+sudo systemctl status ssh
+
+# Check SSH configuration
+sudo grep -E "^Port|^PasswordAuthentication|^PubkeyAuthentication" /etc/ssh/sshd_config
+
+# Check if port 2222 is listening
+sudo netstat -tlnp | grep :2222
+
+# Check firewall rules
+sudo ufw status
+
+# Check SSH logs
+sudo journalctl -u ssh --no-pager -n 20
+```
+
+**Solutions:**
+```bash
+# Configure SSH properly
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+
+sudo tee /etc/ssh/sshd_config > /dev/null << 'EOF'
+Port 2222
+Protocol 2
+PermitRootLogin no
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+MaxAuthTries 3
+MaxSessions 10
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
+PermitTunnel no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+LoginGraceTime 60
+StrictModes yes
+IgnoreRhosts yes
+HostbasedAuthentication no
+PermitEmptyPasswords no
+AllowUsers arcblock
+EOF
+
+# Restart SSH service
+sudo systemctl restart ssh
+
+# Configure firewall
+sudo ufw allow 2222/tcp
+```
+
+### 4. Node.js and Blocklet CLI Issues
+
+#### Issue: Node.js not installed or wrong version
+```bash
+node --version
+# Shows: command not found or old version
+```
+
+**Diagnosis:**
+```bash
+# Check Node.js installation
+which node
+node --version
+npm --version
+
+# Check Node.js repository
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -c 'head -20'
+```
+
+**Solutions:**
+```bash
+# Install Node.js LTS
+curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+sudo bash /tmp/nodesource_setup.sh
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version
+npm --version
+```
+
+#### Issue: Blocklet CLI not installed or accessible
+```bash
+blocklet --version
+# Shows: command not found
+```
+
+**Diagnosis:**
+```bash
+# Check global npm packages
+npm list -g --depth=0
+
+# Check Blocklet CLI specifically
 npm list -g @blocklet/cli
 
-# 2. Check configuration
-sudo -u arcblock ls -la /opt/blocklet-server/
-
-# 3. Manual service restart
-sudo systemctl restart blocklet-server
-
-# 4. Check service configuration
-sudo cat /etc/systemd/system/blocklet-server.service
+# Check PATH
+echo $PATH | grep npm
 ```
 
-#### Issue: Wrong command in systemd service
-
-**Fix Command Path:**
+**Solutions:**
 ```bash
-# Check current ExecStart command
-sudo grep ExecStart /etc/systemd/system/blocklet-server.service
+# Install Blocklet CLI globally
+sudo npm install -g @blocklet/cli
 
-# Should show: ExecStart=/usr/local/bin/blocklet server start
-# If shows old 'abtnode' command, update service file
+# Verify installation
+which blocklet
+blocklet --version
 
+# Fix PATH if needed
+echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 5. Blocklet Server Service Issues
+
+#### Issue: Blocklet Server service fails to start
+```bash
+sudo systemctl status blocklet-server
+# Shows: failed (Result: exit-code)
+```
+
+**Diagnosis:**
+```bash
+# Check service logs
+sudo journalctl -u blocklet-server --no-pager -n 50
+
+# Check service configuration
+sudo cat /etc/systemd/system/blocklet-server.service
+
+# Check Blocklet Server configuration
+sudo -u arcblock blocklet server config list
+
+# Check directory permissions
+ls -la /opt/blocklet-server
+```
+
+**Solutions:**
+```bash
+# Create/fix service directories
+sudo mkdir -p /opt/blocklet-server/{bin,data,config,logs}
+sudo chown -R arcblock:arcblock /opt/blocklet-server
+sudo chmod 755 /opt/blocklet-server
+
+# Initialize Blocklet Server
+sudo -u arcblock blocklet server init /opt/blocklet-server
+
+# Configure Blocklet Server
+sudo -u arcblock blocklet server config set dataDir /opt/blocklet-server/data
+sudo -u arcblock blocklet server config set port 8080
+
+# Restart service
 sudo systemctl daemon-reload
 sudo systemctl restart blocklet-server
 ```
 
-### 4. Port and Network Issues
+### 6. Network and Port Issues
 
-#### Issue: Cannot access web interface
-
-**Check Port Configuration:**
+#### Issue: Ports 8080/8443 not responding
 ```bash
-# Verify correct ports are listening
-sudo netstat -tlnp | grep -E "(8080|8443)"
-
-# Test local connectivity
-curl -I http://localhost:8080
-
-# Check firewall rules
-sudo ufw status | grep -E "(8080|8443)"
+curl -f http://localhost:8080
+# Shows: Connection refused
 ```
 
 **Port Migration Fix:**
@@ -184,10 +315,28 @@ curl -k https://YOUR_SERVER_IP:8443
 # curl http://YOUR_SERVER_IP:8089  # This won't work
 ```
 
-#### Issue: Nginx proxy not working
-
-**Check Nginx Configuration:**
+**Diagnosis:**
 ```bash
+# Check if ports are listening
+sudo netstat -tlnp | grep -E ":8080|:8443"
+
+# Check firewall rules
+sudo ufw status
+
+# Check service binding
+sudo ss -tlnp | grep blocklet
+
+# Check nginx configuration
+sudo nginx -t
+sudo systemctl status nginx
+```
+
+**Solutions:**
+```bash
+# Configure firewall
+sudo ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+sudo ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
+
 # Test nginx configuration
 sudo nginx -t
 
@@ -200,285 +349,178 @@ sudo cat /etc/nginx/sites-available/blocklet-server
 # Should proxy to 127.0.0.1:8080
 ```
 
-### 5. Package Installation Issues
+### 7. Nginx Proxy Issues
 
-#### Issue: @blocklet/cli installation fails
-
-**Diagnosis:**
+#### Issue: Nginx not proxying correctly
 ```bash
-# Check npm configuration
-npm config list
-
-# Verify Node.js version
-node --version
-
-# Check npm permissions
-npm list -g --depth=0
-```
-
-**Solutions:**
-```bash
-# 1. Reinstall CLI
-npm uninstall -g @blocklet/cli
-npm install -g @blocklet/cli
-
-# 2. Clear npm cache
-npm cache clean --force
-
-# 3. Fix npm permissions
-sudo chown -R $(whoami) ~/.npm
-```
-
-#### Issue: Old package references
-
-**Check for deprecated packages:**
-```bash
-# Should NOT find any @arcblock/cli references
-npm list -g | grep arcblock
-
-# If found, remove old package
-npm uninstall -g @arcblock/cli
-npm install -g @blocklet/cli
-```
-sudo cat /var/log/cloud-init-output.log | tail -50
-
-# Check what configuration was used
-sudo cat /var/lib/cloud/instance/user-data.txt
-```
-
-**Common Causes:**
-- **YAML formatting errors**: Incorrect indentation in cloud-init file
-- **User creation before file writes**: Files written to user home before user exists
-- **Missing dependencies**: Required packages not installed
-- **Network connectivity**: Unable to download external resources
-
-**Solutions:**
-```bash
-# For user creation issues
-sudo useradd -m -s /bin/bash -G users,admin,sudo arcblock
-sudo mkdir -p /home/arcblock/.ssh
-echo "YOUR_SSH_KEY" | sudo tee /home/arcblock/.ssh/authorized_keys
-sudo chown -R arcblock:arcblock /home/arcblock
-sudo chmod 700 /home/arcblock/.ssh
-sudo chmod 600 /home/arcblock/.ssh/authorized_keys
-
-# Re-run cloud-init (destructive)
-sudo cloud-init clean --logs
-sudo cloud-init init
-```
-
-### 2. Blocklet Server Service Issues
-
-#### Issue: Service not found or won't start
-```bash
-sudo systemctl status blocklet-server
-# Shows: Unit blocklet-server.service could not be found
+curl -f http://localhost:80
+# Shows: 502 Bad Gateway
 ```
 
 **Diagnosis:**
 ```bash
-# Check if service file exists
-ls -la /etc/systemd/system/blocklet-server.service
-
-# Check service logs
-sudo journalctl -u blocklet-server --no-pager
-
-# Check working directory
-ls -la /home/arcblock/blocklet-server/
-```
-
-**Solution - Manual Service Creation:**
-```bash
-# Create service file
-sudo tee /etc/systemd/system/blocklet-server.service > /dev/null << 'EOF'
-[Unit]
-Description=Arcblock Blocklet Server
-After=network-online.target
-Wants=network-online.target
-RequiresMountsFor=/home/arcblock
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-User=arcblock
-Group=arcblock
-WorkingDirectory=/home/arcblock/blocklet-server
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStartPre=/usr/bin/podman compose down --remove-orphans
-ExecStart=/usr/bin/podman compose up -d
-ExecStop=/usr/bin/podman compose down --timeout 30
-TimeoutStartSec=300
-TimeoutStopSec=120
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Reload and start
-sudo systemctl daemon-reload
-sudo systemctl enable blocklet-server
-sudo systemctl start blocklet-server
-```
-
-### 3. Container Issues
-
-#### Issue: No containers running
-```bash
-sudo -u arcblock podman ps
-# Shows: CONTAINER ID  IMAGE  COMMAND  CREATED  STATUS  PORTS  NAMES
-```
-
-**Diagnosis:**
-```bash
-# Check Podman configuration
-sudo -u arcblock podman info | head -20
-
-# Check if image was pulled
-sudo -u arcblock podman images
-
-# Check compose file
-cat /home/arcblock/blocklet-server/compose.yaml
-
-# Check for errors
-sudo -u arcblock podman logs blocklet-server 2>/dev/null || echo "No container logs"
-```
-
-**Common Causes:**
-- **Rootless Podman not configured**: Missing subuid/subgid configuration
-- **Missing compose file**: Docker compose configuration not created
-- **Image pull failures**: Network issues or authentication problems
-- **Permission issues**: User can't access Podman socket
-
-**Solutions:**
-```bash
-# Configure rootless Podman
-echo 'arcblock:100000:65536' | sudo tee -a /etc/subuid
-echo 'arcblock:100000:65536' | sudo tee -a /etc/subgid
-sudo loginctl enable-linger arcblock
-
-# Setup Podman socket
-sudo -u arcblock systemctl --user enable podman.socket
-sudo -u arcblock systemctl --user start podman.socket
-
-# Pull image manually
-sudo -u arcblock podman pull arcblock/blocklet-server:latest
-
-# Create compose file if missing
-sudo mkdir -p /home/arcblock/blocklet-server
-sudo tee /home/arcblock/blocklet-server/compose.yaml > /dev/null << 'EOF'
-# Note: This version now uses native installation, not containers
-# Check service status instead:
-sudo systemctl status blocklet-server
-
-# Check native service configuration:
-sudo cat /etc/systemd/system/blocklet-server.service
-
-# Verify Blocklet Server configuration:
-sudo -u arcblock blocklet server config list
-EOF
-sudo chown -R arcblock:arcblock /home/arcblock/blocklet-server
-```
-
-### 4. Network Connectivity Issues
-
-#### Issue: API endpoint not responding
-```bash
-curl -f http://localhost:8080
-# Shows: curl: (7) Failed to connect to localhost port 8080
-```
-
-**Diagnosis:**
-```bash
-# Check if port is listening
-sudo netstat -tlnp | grep 8080
-
-# Check firewall
-sudo ufw status
-
-# Check service status
-sudo systemctl status blocklet-server
-
-# Check nginx proxy
+# Check nginx status
 sudo systemctl status nginx
 
-# Check container health
-sudo -u arcblock podman inspect blocklet-server | grep -A 10 -B 10 Health
+# Check nginx configuration
+sudo nginx -t
+
+# Check nginx logs
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+
+# Check if site is enabled
+ls -la /etc/nginx/sites-enabled/
 ```
 
 **Solutions:**
 ```bash
-# Configure firewall
-sudo ufw allow 8080/tcp
-sudo ufw allow 8443/tcp
+# Configure nginx properly
+sudo tee /etc/nginx/sites-available/blocklet-server > /dev/null << 'EOF'
+server {
+    listen 80;
+    server_name _;
 
-# Restart service
-sudo systemctl restart blocklet-server
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+EOF
 
-# Wait for service to be ready
-for i in {1..12}; do
-  if curl -sf http://localhost:8080; then
-    echo "Service is ready!"
-    break
-  fi
-  echo "Waiting... attempt $i/12"
-  sleep 15
-done
+# Enable site
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/blocklet-server /etc/nginx/sites-enabled/
+
+# Test and restart nginx
+sudo nginx -t
+sudo systemctl restart nginx
 ```
 
-### 5. SSH Access Issues
+### 8. Redis Backend Issues
 
-#### Issue: Cannot SSH to server
+#### Issue: Redis not running or accessible
 ```bash
-ssh -p 2222 arcblock@YOUR_SERVER_IP
-# Shows: Connection refused or timeout
+redis-cli ping
+# Shows: Could not connect to Redis
 ```
 
 **Diagnosis:**
 ```bash
-# Check SSH service
-sudo systemctl status ssh
+# Check Redis status
+sudo systemctl status redis-server
 
-# Check SSH configuration
-sudo sshd -T | grep -E "^port|^passwordauthentication|^pubkeyauthentication"
+# Check Redis configuration
+sudo cat /etc/redis/redis.conf | grep -E "^port|^bind"
 
-# Check firewall
-sudo ufw status | grep 2222
-
-# Test local SSH
-ssh -p 2222 arcblock@localhost
+# Check Redis logs
+sudo journalctl -u redis-server --no-pager -n 20
 ```
 
 **Solutions:**
 ```bash
-# Configure SSH properly
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+# Install and configure Redis
+sudo apt-get install -y redis-server
 
-sudo tee /etc/ssh/sshd_config > /dev/null << 'EOF'
-Port 2222
-Protocol 2
-PermitRootLogin no
-PasswordAuthentication no
-PubkeyAuthentication yes
-MaxAuthTries 3
-X11Forwarding no
-AllowTcpForwarding no
-ClientAliveInterval 300
-ClientAliveCountMax 2
-AllowUsers arcblock
-EOF
+# Enable and start Redis
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
 
-# Restart SSH
-sudo systemctl restart ssh
-
-# Configure firewall
-sudo ufw allow 2222/tcp
+# Test Redis connection
+redis-cli ping
+# Should return: PONG
 ```
 
-## Manual Recovery Procedures
+### 9. SSL/TLS Certificate Issues
 
-### Complete Manual Recovery
+#### Issue: HTTPS endpoint not working
+```bash
+curl -k https://localhost:8443
+# Shows: Connection refused
+```
 
-If cloud-init completely failed, use our automated recovery script:
+**Diagnosis:**
+```bash
+# Check if HTTPS port is listening
+sudo netstat -tlnp | grep :8443
+
+# Check Blocklet Server SSL configuration
+sudo -u arcblock blocklet server config list | grep -i ssl
+
+# Check certificate files
+sudo find /opt/blocklet-server -name "*.crt" -o -name "*.key" -o -name "*.pem"
+```
+
+**Solutions:**
+```bash
+# Generate self-signed certificate if needed
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /opt/blocklet-server/config/server.key \
+    -out /opt/blocklet-server/config/server.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+# Set proper permissions
+sudo chown -R arcblock:arcblock /opt/blocklet-server/config/
+sudo chmod 600 /opt/blocklet-server/config/server.key
+sudo chmod 644 /opt/blocklet-server/config/server.crt
+
+# Restart Blocklet Server
+sudo systemctl restart blocklet-server
+```
+
+### 10. Performance and Resource Issues
+
+#### Issue: High memory or CPU usage
+```bash
+free -h
+# Shows: very low available memory
+```
+
+**Diagnosis:**
+```bash
+# Check system resources
+free -h
+df -h
+top -bn1 | head -20
+
+# Check service resource usage
+sudo systemctl status blocklet-server
+ps aux | grep -E "blocklet|node|nginx|redis"
+
+# Check system load
+uptime
+```
+
+**Solutions:**
+```bash
+# Optimize Blocklet Server configuration
+sudo -u arcblock blocklet server config set memory.limit 2048
+sudo -u arcblock blocklet server config set workers 2
+
+# Restart services to apply changes
+sudo systemctl restart blocklet-server
+sudo systemctl restart nginx
+sudo systemctl restart redis-server
+
+# Clean up logs and temporary files
+sudo journalctl --vacuum-time=7d
+sudo apt-get clean
+sudo apt-get autoremove
+```
+
+## Recovery Procedures
+
+### Complete System Recovery
+
+If your deployment is completely broken, use our manual recovery script:
 
 ```bash
 # Download and run recovery script
@@ -487,175 +529,187 @@ chmod +x /tmp/manual_recovery.sh
 sudo /tmp/manual_recovery.sh
 ```
 
-### Partial Recovery Steps
+### Partial Recovery Procedures
 
-#### If only container setup failed:
+#### If only service failed:
 ```bash
-# Configure Podman
-echo 'arcblock:100000:65536' | sudo tee -a /etc/subuid
-echo 'arcblock:100000:65536' | sudo tee -a /etc/subgid
-sudo loginctl enable-linger arcblock
+# Reset service configuration
+sudo systemctl stop blocklet-server
+sudo rm -f /etc/systemd/system/blocklet-server.service
 
-# Start Podman services
-sudo -u arcblock systemctl --user enable podman.socket
-sudo -u arcblock systemctl --user start podman.socket
+# Recreate service
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/cloud-init.yaml | grep -A 20 "blocklet-server.service" | sudo tee /etc/systemd/system/blocklet-server.service
 
-# Install CLI and pull image
-sudo -u arcblock npm install -g @blocklet/cli
-sudo -u arcblock podman pull arcblock/blocklet-server:latest
-
-# Start service
+# Restart service
+sudo systemctl daemon-reload
+sudo systemctl enable blocklet-server
 sudo systemctl start blocklet-server
 ```
 
-#### If only network setup failed:
+#### If only nginx failed:
 ```bash
-# Configure firewall
+# Reinstall and configure nginx
+sudo apt-get install --reinstall nginx
+
+# Reconfigure nginx
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/setup.sh | grep -A 15 "sites-available/blocklet-server" | sudo bash
+
+# Restart nginx
+sudo systemctl restart nginx
+```
+
+#### If only SSH failed:
+```bash
+# Reset SSH configuration
+sudo cp /etc/ssh/sshd_config.backup /etc/ssh/sshd_config
+
+# Reconfigure SSH
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/manual_recovery.sh | grep -A 20 "ssh-config.txt" | sudo bash
+
+# Restart SSH
+sudo systemctl restart ssh
+```
+
+### Firewall Reset
+
+```bash
+# Complete firewall reset
 sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow 2222/tcp
-sudo ufw allow 8080/tcp
-sudo ufw allow 8443/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
+sudo ufw allow 2222/tcp comment 'SSH'
+sudo ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+sudo ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
+sudo ufw allow 80/tcp comment 'HTTP'
+sudo ufw allow 443/tcp comment 'HTTPS'
 sudo ufw --force enable
-
-# Configure fail2ban
-sudo systemctl enable fail2ban
-sudo systemctl start fail2ban
 ```
 
-## Configuration Validation
+## Diagnostic and Log Collection
 
-### Pre-deployment Validation
+### Comprehensive System Check
+
 ```bash
-# Validate YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
-
-# Check SSH key format
-grep -E "^ssh-(rsa|dss|ecdsa|ed25519)" cloud-init.yaml
-
-# Validate required fields
-grep -E "(users|packages|write_files|runcmd)" cloud-init.yaml
+# Download and run comprehensive diagnostic
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/validate-setup.sh -o /tmp/validate-setup.sh
+chmod +x /tmp/validate-setup.sh
+/tmp/validate-setup.sh
 ```
 
-### Post-deployment Validation
+### Manual Diagnostic Collection
+
 ```bash
-# Complete system check
-curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh | bash
-
-# Service health check
-sudo systemctl is-active blocklet-server
-sudo systemctl status blocklet-server --no-pager
-curl -sf http://localhost:8080 && echo "HTTP OK" || echo "HTTP FAILED"
-curl -k -sf https://localhost:8443 && echo "HTTPS OK" || echo "HTTPS FAILED"
-```
-
-## Known Issues and Workarounds
-
-### 1. ARM Server Compatibility
-- **Issue**: Cloud-init may not execute properly on ARM-based Hetzner servers
-- **Workaround**: Use x86_64 servers (CX31, CX41, etc.)
-
-### 2. Container Image Availability
-- **Issue**: `arcblock/blocklet-server:latest` may require authentication
-- **Workaround**: Use native installation (`native-install.yaml`)
-
-### 3. Network Timeout Issues
-- **Issue**: Package downloads may fail in some regions
-- **Workaround**: Retry deployment or use different package mirrors
-
-### 4. Cloud Provider Compatibility
-- **Issue**: Some cloud providers may have different cloud-init implementations
-- **Workaround**: Test deployment in development environment first
-
-## Advanced Debugging
-
-### Container Debugging
-```bash
-# Access running container
-sudo -u arcblock podman exec -it blocklet-server /bin/bash
-
-# Check container logs
-sudo -u arcblock podman logs blocklet-server --tail 100
-
-# Check container resource usage
-sudo -u arcblock podman stats
-
-# Inspect container configuration
-sudo -u arcblock podman inspect blocklet-server
-```
-
-### System Performance Debugging
-```bash
-# Check system resources
+# System status
+echo "=== System Information ==="
+uname -a
+lsb_release -a
+uptime
 free -h
 df -h
-top -bn1 | head -20
 
-# Check network connectivity
-ss -tlnp | grep -E "(8080|8443|2222)"
-ping -c 3 8.8.8.8
+echo "=== Service Status ==="
+sudo systemctl status blocklet-server --no-pager
+sudo systemctl status nginx --no-pager
+sudo systemctl status redis-server --no-pager
+sudo systemctl status ssh --no-pager
 
-# Check system logs
-sudo journalctl --since "1 hour ago" | grep -E "(error|failed|critical)"
+echo "=== Network Status ==="
+sudo netstat -tlnp | grep -E ":22|:80|:443|:2222|:8080|:8443"
+sudo ufw status verbose
+
+echo "=== Application Status ==="
+curl -sf http://localhost:8080 && echo "HTTP OK" || echo "HTTP FAILED"
+curl -k -sf https://localhost:8443 && echo "HTTPS OK" || echo "HTTPS FAILED"
+redis-cli ping && echo "Redis OK" || echo "Redis FAILED"
+
+echo "=== Log Samples ==="
+sudo journalctl -u blocklet-server --no-pager -n 10
+sudo tail -n 10 /var/log/nginx/error.log
+sudo tail -n 10 /var/log/cloud-init.log
 ```
 
-### Log Analysis
+### Log Bundle Creation
+
 ```bash
-# Cloud-init logs
-sudo journalctl -u cloud-init --no-pager
-sudo journalctl -u cloud-config --no-pager
-sudo journalctl -u cloud-final --no-pager
-
-# Service logs
-sudo journalctl -u blocklet-server --no-pager -f
-
-# System logs
-sudo journalctl --since "1 hour ago" --no-pager
-```
-
-## Getting Help
-
-### Log Collection
-Before seeking help, collect these logs:
-```bash
-# Create log bundle
+# Create comprehensive log bundle
 mkdir -p /tmp/arcdeploy-logs
 sudo cloud-init status --long > /tmp/arcdeploy-logs/cloud-init-status.txt
 sudo cat /var/log/cloud-init.log > /tmp/arcdeploy-logs/cloud-init.log
 sudo cat /var/log/cloud-init-output.log > /tmp/arcdeploy-logs/cloud-init-output.log
 sudo systemctl status blocklet-server > /tmp/arcdeploy-logs/service-status.txt
-sudo -u arcblock podman ps -a > /tmp/arcdeploy-logs/containers.txt
 sudo journalctl -u blocklet-server --no-pager > /tmp/arcdeploy-logs/service-logs.txt
+sudo cat /var/log/nginx/access.log > /tmp/arcdeploy-logs/nginx-access.log
+sudo cat /var/log/nginx/error.log > /tmp/arcdeploy-logs/nginx-error.log
+sudo -u arcblock blocklet server config list > /tmp/arcdeploy-logs/blocklet-config.txt
 
 # Create archive
 tar -czf arcdeploy-debug-$(date +%Y%m%d-%H%M%S).tar.gz -C /tmp arcdeploy-logs/
+echo "Log bundle created: arcdeploy-debug-$(date +%Y%m%d-%H%M%S).tar.gz"
 ```
 
-### Support Channels
-- **GitHub Issues**: [Report bugs and issues](https://github.com/Pocklabs/ArcDeploy/issues)
-- **GitHub Discussions**: [Community support](https://github.com/Pocklabs/ArcDeploy/discussions)
-- **Documentation**: [Project Wiki](https://github.com/Pocklabs/ArcDeploy/wiki)
+## Advanced Troubleshooting
 
-### Emergency Recovery
-If you're completely locked out:
-1. **Access via Hetzner Console**: Use the web-based console in Hetzner Cloud
-2. **Reset SSH**: Redeploy server with corrected cloud-init configuration
-3. **Manual Installation**: Skip cloud-init and install manually via console
-
----
-
-## Quick Reference Commands
+### Health Check Automation
 
 ```bash
+# Run health check manually
+sudo -u arcblock /opt/blocklet-server/healthcheck.sh
+
+# Check health check cron job
+sudo -u arcblock crontab -l | grep healthcheck
+
+# View health check logs
+sudo -u arcblock tail -f /opt/blocklet-server/logs/health.log
+```
+
+### Performance Monitoring
+
+```bash
+# Monitor system resources in real-time
+htop
+
+# Monitor specific service performance
+sudo systemctl status blocklet-server
+sudo journalctl -u blocklet-server -f
+
+# Monitor network connections
+sudo ss -tlnp | grep -E "(8080|8443|2222)"
+
+# Monitor disk I/O
+sudo iotop -ao
+
+# Check service response times
+time curl -f http://localhost:8080
+```
+
+### Security Validation
+
+```bash
+# Check SSH security
+sudo sshd -T | grep -E "Port|PasswordAuthentication|PubkeyAuthentication"
+
+# Check firewall rules
+sudo ufw status verbose
+
+# Check fail2ban status
+sudo fail2ban-client status
+
+# Check service permissions
+ls -la /opt/blocklet-server
+ps aux | grep blocklet | grep -v grep
+
+# Check SSL/TLS configuration
+sudo -u arcblock blocklet server config list | grep -i ssl
+```
+
+## Common Command Reference
+
+### Service Management
+```bash
 # Status checks
-sudo cloud-init status --long
 sudo systemctl status blocklet-server
 sudo systemctl status nginx
 sudo systemctl status redis-server
-curl -f http://localhost:8080
 
 # Service management
 sudo systemctl restart blocklet-server
@@ -664,12 +718,46 @@ sudo systemctl restart ssh
 
 # Log viewing
 sudo journalctl -u blocklet-server -f
-sudo -u arcblock podman logs blocklet-server --tail 50
+sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/cloud-init-output.log
 
-# Recovery
-curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh | bash
-curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/manual_recovery.sh -o /tmp/recovery.sh && chmod +x /tmp/recovery.sh && sudo /tmp/recovery.sh
+# Configuration management
+sudo -u arcblock blocklet server config list
+sudo -u arcblock blocklet server status
+sudo nginx -t
 ```
 
-This troubleshooting guide covers the most common issues encountered with ArcDeploy. For additional help, please refer to the project's GitHub repository or community discussions.
+### Quick Fixes
+```bash
+# Restart all services
+sudo systemctl restart blocklet-server nginx redis-server ssh
+
+# Reset firewall
+sudo ufw --force reset && sudo ufw default deny incoming && sudo ufw default allow outgoing && sudo ufw allow 2222/tcp && sudo ufw allow 8080/tcp && sudo ufw allow 8443/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw --force enable
+
+# Check all endpoints
+curl -f http://localhost:8080 && curl -k -f https://localhost:8443 && curl -f http://localhost:80 && redis-cli ping
+
+# Full system status
+sudo systemctl is-active blocklet-server nginx redis-server ssh && echo "All services active"
+```
+
+## Getting Help
+
+### Documentation Resources
+- [Implementation Details](IMPLEMENTATION_DETAILS.md)
+- [Debugging Guide](DEBUGGING_GUIDE.md)
+- [Firewall Ports Guide](FIREWALL_PORTS_GUIDE.md)
+
+### Automated Tools
+- **Debug Script**: `scripts/debug_commands.sh` - 30+ diagnostic checks
+- **Validation Script**: `scripts/validate-setup.sh` - Complete deployment validation
+- **Recovery Script**: `scripts/manual_recovery.sh` - Full system recovery
+
+### Support Channels
+- **GitHub Issues**: [ArcDeploy Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Documentation**: [ArcDeploy Documentation](https://github.com/Pocklabs/ArcDeploy/tree/main/docs)
+
+---
+
+**Note**: This troubleshooting guide is specifically for ArcDeploy's native installation architecture. All procedures assume a native Blocklet Server deployment without containers.

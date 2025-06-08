@@ -339,8 +339,8 @@ sudo cloud-init modules --mode=final
 # Restart Blocklet Server
 sudo systemctl restart blocklet-server
 
-# Reset Podman for user
-sudo -u arcblock podman system reset --force
+# Reset Blocklet Server configuration
+sudo -u arcblock blocklet server config reset
 
 # Restart SSH with new configuration
 sudo systemctl restart ssh
@@ -355,19 +355,22 @@ sudo ufw allow 8443/tcp
 sudo ufw --force enable
 ```
 
-### Manual Container Management
+### Manual Service Management
+
+**If the native service isn't starting properly:**
 
 ```bash
-# Stop and remove container
-sudo -u arcblock podman stop blocklet-server
-sudo -u arcblock podman rm blocklet-server
+# Stop Blocklet Server service
+sudo systemctl stop blocklet-server
 
-# Pull fresh image
-sudo -u arcblock podman pull arcblock/blocklet-server:latest
+# Reset service configuration
+sudo systemctl daemon-reload
 
-# Start container manually
-cd /home/arcblock/blocklet-server
-sudo -u arcblock podman compose up -d
+# Restart service
+sudo systemctl start blocklet-server
+
+# Check service status
+sudo systemctl status blocklet-server
 ```
 
 ## ✅ Verification Commands
@@ -383,7 +386,7 @@ sudo systemctl is-active cloud-init-local cloud-init-network cloud-config cloud-
 
 # Verify Blocklet Server is running
 sudo systemctl is-active blocklet-server
-sudo -u arcblock podman ps | grep blocklet-server
+sudo -u arcblock blocklet server status
 
 # Test HTTP endpoint
 curl -f http://localhost:8080
@@ -419,9 +422,9 @@ for service in cloud-init-local cloud-init-network cloud-config cloud-final bloc
     echo "  $service: $status"
 done
 
-# Container status
-echo -e "\nContainer status:"
-sudo -u arcblock podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# Service status
+echo -e "\nService status:"
+sudo systemctl status blocklet-server --no-pager -l
 
 # Network check
 echo -e "\nNetwork check:"
