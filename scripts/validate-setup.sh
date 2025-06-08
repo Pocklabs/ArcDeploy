@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Arcblock Blocklet Server Cloud-Init Setup Validation Script
-# Enhanced validation for production-ready configuration
+# ArcDeploy Native Installation Validation Script
+# Enhanced validation for native Blocklet Server deployment
 
 set -e
 
-echo "=== Blocklet Server Setup Validation ==="
+echo "=== ArcDeploy Native Installation Validation ==="
 echo "Date: $(date)"
 echo "Hostname: $(hostname)"
 echo "User: $(whoami)"
@@ -121,8 +121,11 @@ check_status $? "UFW firewall is active"
 ufw status | grep -q "2222" > /dev/null 2>&1
 check_status $? "Port 2222 (SSH) is allowed"
 
-ufw status | grep -q "8089" > /dev/null 2>&1
-check_status $? "Port 8089 (Blocklet Server) is allowed"
+ufw status | grep -q "8080" > /dev/null 2>&1
+check_status $? "Port 8080 (Blocklet Server HTTP) is allowed"
+
+ufw status | grep -q "8443" > /dev/null 2>&1
+check_status $? "Port 8443 (Blocklet Server HTTPS) is allowed"
 
 ufw status | grep -q "80" > /dev/null 2>&1
 check_status $? "Port 80 (HTTP) is allowed"
@@ -156,58 +159,79 @@ check_status $? "SSH protection is enabled in fail2ban"
 
 echo
 
-# Test 6: Podman Installation and Configuration
-echo "6. Checking Podman Installation"
-command -v podman > /dev/null 2>&1
-check_status $? "Podman is installed"
+# Test 6: Node.js Installation and Configuration
+echo "6. Checking Node.js Installation"
+command -v node > /dev/null 2>&1
+check_status $? "Node.js is installed"
 
-sudo -u arcblock podman --version > /dev/null 2>&1
-check_status $? "Podman accessible by arcblock user"
+command -v npm > /dev/null 2>&1
+check_status $? "npm is installed"
 
-# Check subuid/subgid configuration
-grep -q "arcblock:" /etc/subuid > /dev/null 2>&1
-check_status $? "Subuid configuration for arcblock user"
+if command -v node > /dev/null 2>&1; then
+    node_version=$(node --version 2>/dev/null)
+    check_info "Node.js version: $node_version"
+    
+    # Check if Node.js version is reasonable (v16+)
+    major_version=$(echo "$node_version" | sed 's/v\([0-9]\+\)\..*/\1/')
+    if [ "$major_version" -ge 16 ]; then
+        check_status 0 "Node.js version is suitable (v16+)"
+    else
+        check_warning "Node.js version may be too old (recommended v16+)"
+    fi
+fi
 
-grep -q "arcblock:" /etc/subgid > /dev/null 2>&1
-check_status $? "Subgid configuration for arcblock user"
-
-# Check user linger
-loginctl show-user arcblock 2>/dev/null | grep -q "Linger=yes" > /dev/null 2>&1
-check_status $? "User linger is enabled for arcblock"
-
-# Check podman socket
-sudo -u arcblock systemctl --user is-active --quiet podman.socket > /dev/null 2>&1
-check_status $? "Podman socket is active for arcblock user"
-
-echo
-
-# Test 7: Directory Structure
-echo "7. Checking Directory Structure"
-[ -d "/home/arcblock/blocklet-server" ]
-check_status $? "Blocklet Server directory exists"
-
-[ -d "/home/arcblock/.config/containers" ]
-check_status $? "Podman configuration directory exists"
-
-[ -d "/home/arcblock/.local/share/containers" ]
-check_status $? "Podman storage directory exists"
-
-[ -d "/home/arcblock/backups" ]
-check_status $? "Backup directory exists"
-
-[ -f "/home/arcblock/blocklet-server/compose.yaml" ]
-check_status $? "Docker compose configuration exists"
-
-[ -f "/home/arcblock/.config/containers/registries.conf" ]
-check_status $? "Container registry configuration exists"
-
-[ -f "/home/arcblock/.config/containers/storage.conf" ]
-check_status $? "Container storage configuration exists"
+if command -v npm > /dev/null 2>&1; then
+    npm_version=$(npm --version 2>/dev/null)
+    check_info "npm version: $npm_version"
+fi
 
 echo
 
-# Test 8: Service Configuration
-echo "8. Checking Service Configuration"
+# Test 7: Blocklet CLI Installation
+echo "7. Checking Blocklet CLI Installation"
+command -v blocklet > /dev/null 2>&1
+check_status $? "Blocklet CLI is in PATH"
+
+sudo -u arcblock blocklet --version > /dev/null 2>&1
+check_status $? "Blocklet CLI accessible by arcblock user"
+
+sudo -u arcblock npm list -g @blocklet/cli > /dev/null 2>&1
+check_status $? "@blocklet/cli package is installed globally"
+
+if sudo -u arcblock blocklet --version > /dev/null 2>&1; then
+    cli_version=$(sudo -u arcblock blocklet --version 2>/dev/null)
+    check_info "Blocklet CLI version: $cli_version"
+fi
+
+echo
+
+# Test 8: Directory Structure
+echo "8. Checking Directory Structure"
+[ -d "/opt/blocklet-server" ]
+check_status $? "Main Blocklet Server directory exists"
+
+[ -d "/opt/blocklet-server/data" ]
+check_status $? "Data directory exists"
+
+[ -d "/opt/blocklet-server/config" ]
+check_status $? "Config directory exists"
+
+[ -d "/opt/blocklet-server/logs" ]
+check_status $? "Logs directory exists"
+
+stat -c "%U:%G" /opt/blocklet-server | grep -q "arcblock:arcblock" > /dev/null 2>&1
+check_status $? "Blocklet Server directory has correct ownership"
+
+[ -f "/opt/blocklet-server/healthcheck.sh" ]
+check_status $? "Health check script exists"
+
+[ -x "/opt/blocklet-server/healthcheck.sh" ]
+check_status $? "Health check script is executable"
+
+echo
+
+# Test 9: Service Configuration
+echo "9. Checking Service Configuration"
 [ -f "/etc/systemd/system/blocklet-server.service" ]
 check_status $? "Blocklet Server systemd service file exists"
 
@@ -217,74 +241,112 @@ check_status $? "Blocklet Server service is enabled"
 systemctl is-active --quiet blocklet-server > /dev/null 2>&1
 check_status $? "Blocklet Server service is running"
 
-[ -f "/etc/logrotate.d/blocklet-server" ]
-check_status $? "Log rotation configuration exists"
-
-echo
-
-# Test 9: Container Status
-echo "9. Checking Container Status"
-sudo -u arcblock podman images | grep -q "arcblock/blocklet-server" > /dev/null 2>&1
-check_status $? "Blocklet Server image is available"
-
-sudo -u arcblock podman ps | grep -q "blocklet-server" > /dev/null 2>&1
-check_status $? "Blocklet Server container is running"
-
-# Check container health
-if sudo -u arcblock podman ps --format "{{.Status}}" --filter "name=blocklet-server" | grep -q "healthy\|Up" > /dev/null 2>&1; then
-    check_status 0 "Blocklet Server container is healthy"
+# Check service configuration
+if grep -q "User=arcblock" /etc/systemd/system/blocklet-server.service 2>/dev/null; then
+    check_status 0 "Service runs as arcblock user"
 else
-    check_warning "Container health status unclear"
-fi
-
-# Check container volumes
-volume_count=$(sudo -u arcblock podman volume ls --format "{{.Name}}" | grep -c "blocklet" 2>/dev/null || echo "0")
-if [ "$volume_count" -ge 3 ]; then
-    check_status 0 "Container volumes are created ($volume_count volumes)"
-else
-    check_warning "Expected 3 volumes, found $volume_count"
+    check_warning "Service user configuration unclear"
 fi
 
 echo
 
-# Test 10: Network Connectivity
-echo "10. Checking Network Connectivity"
+# Test 10: Nginx Configuration
+echo "10. Checking Nginx Configuration"
+command -v nginx > /dev/null 2>&1
+check_status $? "Nginx is installed"
+
+systemctl is-active --quiet nginx > /dev/null 2>&1
+check_status $? "Nginx service is running"
+
+[ -f "/etc/nginx/sites-available/blocklet-server" ]
+check_status $? "Nginx site configuration exists"
+
+[ -L "/etc/nginx/sites-enabled/blocklet-server" ]
+check_status $? "Nginx site is enabled"
+
+nginx -t > /dev/null 2>&1
+check_status $? "Nginx configuration is valid"
+
+# Check nginx version for required modules
+nginx_version=$(nginx -v 2>&1 | grep -o '[0-9]\+\.[0-9]\+')
+if [ -n "$nginx_version" ]; then
+    check_info "Nginx version: $nginx_version"
+fi
+
+echo
+
+# Test 11: Redis Configuration
+echo "11. Checking Redis Configuration"
+command -v redis-server > /dev/null 2>&1
+check_status $? "Redis is installed"
+
+systemctl is-active --quiet redis-server > /dev/null 2>&1
+check_status $? "Redis service is running"
+
+redis-cli ping > /dev/null 2>&1
+check_status $? "Redis is responding to ping"
+
+echo
+
+# Test 12: Network Connectivity
+echo "12. Checking Network Connectivity"
 # Test if ports are listening
 netstat -tlnp 2>/dev/null | grep -q ":2222" > /dev/null 2>&1
 check_status $? "SSH port 2222 is listening"
 
-netstat -tlnp 2>/dev/null | grep -q ":8089" > /dev/null 2>&1
+netstat -tlnp 2>/dev/null | grep -q ":8080" > /dev/null 2>&1
 if [ $? -eq 0 ]; then
-    check_status 0 "Blocklet Server port 8089 is listening"
+    check_status 0 "Blocklet Server port 8080 is listening"
 else
-    check_warning "Port 8089 is not listening (service may be starting)"
+    check_warning "Port 8080 is not listening (service may be starting)"
 fi
 
-# Test HTTP endpoint
-curl -sf --max-time 10 http://localhost:8089/api/did >/dev/null 2>&1
+netstat -tlnp 2>/dev/null | grep -q ":8443" > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    check_status 0 "Blocklet Server HTTPS port 8443 is listening"
+else
+    check_warning "Port 8443 is not listening (HTTPS may not be configured)"
+fi
+
+netstat -tlnp 2>/dev/null | grep -q ":80" > /dev/null 2>&1
+check_status $? "Nginx HTTP port 80 is listening"
+
+# Test HTTP endpoints
+curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     check_status 0 "Blocklet Server HTTP endpoint is responding"
 else
     check_warning "Blocklet Server HTTP endpoint not responding (may still be initializing)"
 fi
 
+curl -sf --max-time 10 http://localhost:80 >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    check_status 0 "Nginx proxy is responding"
+else
+    check_warning "Nginx proxy not responding properly"
+fi
+
 echo
 
-# Test 11: System Resources
-echo "11. Checking System Resources"
+# Test 13: System Resources
+echo "13. Checking System Resources"
 total_mem=$(free -m | awk 'NR==2{printf "%.0f", $2}')
-if [ "$total_mem" -gt 4000 ]; then
-    check_status 0 "Memory: ${total_mem}MB (sufficient)"
+if [ "$total_mem" -gt 8000 ]; then
+    check_status 0 "Memory: ${total_mem}MB (excellent)"
+elif [ "$total_mem" -gt 4000 ]; then
+    check_status 0 "Memory: ${total_mem}MB (good)"
 elif [ "$total_mem" -gt 2000 ]; then
     check_warning "Memory: ${total_mem}MB (minimum requirements met)"
 else
     check_status 1 "Memory: ${total_mem}MB (insufficient - recommended 4GB+)"
 fi
 
-total_disk=$(df /home/arcblock 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
+total_disk=$(df /opt/blocklet-server 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
 total_disk_gb=$((total_disk / 1024 / 1024))
-if [ "$total_disk_gb" -gt 40 ]; then
-    check_status 0 "Disk space: ${total_disk_gb}GB (sufficient)"
+if [ "$total_disk_gb" -gt 80 ]; then
+    check_status 0 "Disk space: ${total_disk_gb}GB (excellent)"
+elif [ "$total_disk_gb" -gt 40 ]; then
+    check_status 0 "Disk space: ${total_disk_gb}GB (good)"
 elif [ "$total_disk_gb" -gt 20 ]; then
     check_warning "Disk space: ${total_disk_gb}GB (minimum requirements met)"
 else
@@ -292,7 +354,7 @@ else
 fi
 
 # Check disk usage
-disk_usage=$(df /home/arcblock 2>/dev/null | awk 'NR==2 {print $(NF-1)}' | sed 's/%//' || echo "0")
+disk_usage=$(df /opt/blocklet-server 2>/dev/null | awk 'NR==2 {print $(NF-1)}' | sed 's/%//' || echo "0")
 if [ "$disk_usage" -lt 80 ]; then
     check_status 0 "Disk usage: ${disk_usage}% (healthy)"
 else
@@ -301,64 +363,38 @@ fi
 
 echo
 
-# Test 12: Monitoring and Backup Scripts
-echo "12. Checking Monitoring and Backup"
-[ -f "/home/arcblock/blocklet-server/healthcheck.sh" ]
+# Test 14: Monitoring and Health Checks
+echo "14. Checking Monitoring and Health Checks"
+[ -f "/opt/blocklet-server/healthcheck.sh" ]
 check_status $? "Health check script exists"
 
-[ -f "/home/arcblock/blocklet-server/backup.sh" ]
-check_status $? "Backup script exists"
-
-[ -x "/home/arcblock/blocklet-server/healthcheck.sh" ]
+[ -x "/opt/blocklet-server/healthcheck.sh" ]
 check_status $? "Health check script is executable"
-
-[ -x "/home/arcblock/blocklet-server/backup.sh" ]
-check_status $? "Backup script is executable"
 
 # Check cron jobs
 sudo -u arcblock crontab -l 2>/dev/null | grep -q "healthcheck.sh" > /dev/null 2>&1
 check_status $? "Health check cron job is configured"
 
-sudo -u arcblock crontab -l 2>/dev/null | grep -q "backup.sh" > /dev/null 2>&1
-check_status $? "Backup cron job is configured"
-
-echo
-
-# Test 13: Software Installation
-echo "13. Checking Software Installation"
-command -v node > /dev/null 2>&1
-check_status $? "Node.js is installed"
-
-if command -v node > /dev/null 2>&1; then
-    node_version=$(node --version 2>/dev/null)
-    check_info "Node.js version: $node_version"
-fi
-
-sudo -u arcblock npm list -g @blocklet/cli > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    check_status 0 "Blocklet CLI is installed"
-    cli_version=$(sudo -u arcblock npx abtnode --version 2>/dev/null || echo "unknown")
-    check_info "Blocklet CLI version: $cli_version"
+# Try running health check
+if sudo -u arcblock /opt/blocklet-server/healthcheck.sh > /dev/null 2>&1; then
+    check_status 0 "Health check script runs successfully"
 else
-    check_warning "Blocklet CLI not found (installation may have failed)"
+    check_warning "Health check script failed or has issues"
 fi
-
-command -v git > /dev/null 2>&1
-check_status $? "Git is installed"
 
 echo
 
-# Test 14: Log Files and Health
-echo "14. Checking Logs and Health"
+# Test 15: Log Files and Health
+echo "15. Checking Logs and Health"
 [ -f "/var/log/cloud-init.log" ]
 check_status $? "Cloud-init log exists"
 
 # Check if health check has run
-if [ -f "/home/arcblock/blocklet-server/logs/health.log" ]; then
+if [ -f "/opt/blocklet-server/logs/health.log" ]; then
     check_status 0 "Health check log exists"
     
     # Check recent health check entries
-    if tail -n 5 "/home/arcblock/blocklet-server/logs/health.log" | grep -q "$(date +%Y-%m-%d)" > /dev/null 2>&1; then
+    if tail -n 5 "/opt/blocklet-server/logs/health.log" | grep -q "$(date +%Y-%m-%d)" > /dev/null 2>&1; then
         check_status 0 "Recent health check entries found"
     else
         check_warning "No recent health check entries found"
@@ -367,45 +403,49 @@ else
     check_warning "Health check log not found (monitoring may not have started)"
 fi
 
-# Check container logs
-if sudo -u arcblock podman logs blocklet-server --tail 10 2>/dev/null | grep -q "." > /dev/null 2>&1; then
-    check_status 0 "Container logs are available"
+# Check service logs
+if sudo journalctl -u blocklet-server --no-pager -n 1 2>/dev/null | grep -q "." > /dev/null 2>&1; then
+    check_status 0 "Service logs are available"
 else
-    check_warning "Container logs are empty or unavailable"
+    check_warning "Service logs are empty or unavailable"
 fi
 
 echo
 
-# Test 15: Auto-update Configuration
-echo "15. Checking Auto-update Configuration"
-[ -f "/etc/systemd/system/podman-auto-update.timer" ]
-check_status $? "Auto-update timer configuration exists"
+# Test 16: Installation Completion
+echo "16. Checking Installation Completion"
+[ -f "/opt/blocklet-server/.native-install-complete" ]
+check_status $? "Native installation completion marker exists"
 
-[ -f "/etc/systemd/system/podman-auto-update.service" ]
-check_status $? "Auto-update service configuration exists"
-
-systemctl is-enabled --quiet podman-auto-update.timer > /dev/null 2>&1
-check_status $? "Auto-update timer is enabled"
-
-systemctl is-active --quiet podman-auto-update.timer > /dev/null 2>&1
-check_status $? "Auto-update timer is active"
+# Check Blocklet Server configuration
+if sudo -u arcblock blocklet server config list > /dev/null 2>&1; then
+    check_status 0 "Blocklet Server configuration is accessible"
+else
+    check_warning "Cannot access Blocklet Server configuration"
+fi
 
 echo
 
 # System Information
-echo "16. System Information"
+echo "17. System Information"
 echo "OS: $(lsb_release -d 2>/dev/null | cut -f2 || echo 'Unknown')"
 echo "Kernel: $(uname -r)"
 echo "Uptime: $(uptime -p)"
 echo "Load Average: $(uptime | awk -F'load average:' '{print $2}')"
-echo "Podman Version: $(podman --version 2>/dev/null || echo 'Not available')"
 
 if command -v node > /dev/null 2>&1; then
     echo "Node.js Version: $(node --version)"
 fi
 
+if command -v nginx > /dev/null 2>&1; then
+    echo "Nginx Version: $(nginx -v 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')"
+fi
+
+if command -v redis-server > /dev/null 2>&1; then
+    echo "Redis Version: $(redis-server --version | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')"
+fi
+
 echo "IPv4 Address: $(hostname -I | awk '{print $1}' || echo 'Not available')"
-echo "IPv6 Address: $(hostname -I | awk '{print $2}' || echo 'Not available')"
 
 echo
 
@@ -420,10 +460,10 @@ echo
 
 if [ $FAILED -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo -e "${GREEN}✓ Excellent! All checks passed successfully.${NC}"
-    echo "Your Blocklet Server setup is fully operational."
+    echo "Your Blocklet Server native installation is fully operational."
 elif [ $FAILED -eq 0 ]; then
     echo -e "${YELLOW}✓ Good! All critical checks passed with some warnings.${NC}"
-    echo "Your Blocklet Server setup is operational but may need attention."
+    echo "Your Blocklet Server installation is operational but may need attention."
 else
     echo -e "${RED}✗ Issues detected! Some critical checks failed.${NC}"
     echo "Please review the failed items above before proceeding."
@@ -435,12 +475,13 @@ echo
 echo "=== Quick Access Information ==="
 SERVER_IP=$(hostname -I | awk '{print $1}')
 echo "SSH Access: ssh -p 2222 arcblock@$SERVER_IP"
-echo "Web Interface: http://$SERVER_IP:8089"
+echo "Web Interface (Direct): http://$SERVER_IP:8080"
+echo "Web Interface (Nginx): http://$SERVER_IP"
+echo "HTTPS Interface: https://$SERVER_IP:8443"
 echo "Service Status: sudo systemctl status blocklet-server"
-echo "Container Status: sudo -u arcblock podman ps"
-echo "Container Logs: sudo -u arcblock podman logs blocklet-server"
-echo "Health Check: sudo -u arcblock /home/arcblock/blocklet-server/healthcheck.sh"
-echo "Manual Backup: sudo -u arcblock /home/arcblock/blocklet-server/backup.sh"
+echo "Service Logs: sudo journalctl -u blocklet-server -f"
+echo "Health Check: sudo -u arcblock /opt/blocklet-server/healthcheck.sh"
+echo "Blocklet CLI: sudo -u arcblock blocklet server status"
 
 echo
 
@@ -449,9 +490,12 @@ echo "=== Troubleshooting Commands ==="
 echo "View cloud-init logs: sudo tail -f /var/log/cloud-init-output.log"
 echo "View service logs: sudo journalctl -u blocklet-server -f"
 echo "Restart service: sudo systemctl restart blocklet-server"
-echo "Check container health: sudo -u arcblock podman healthcheck run blocklet-server"
+echo "Check Blocklet config: sudo -u arcblock blocklet server config list"
 echo "View firewall rules: sudo ufw status verbose"
 echo "Check fail2ban status: sudo fail2ban-client status"
+echo "Test nginx config: sudo nginx -t"
+echo "Restart nginx: sudo systemctl restart nginx"
+echo "Check Redis: redis-cli ping"
 
 echo
 echo "For detailed troubleshooting, check the README.md file in this repository."

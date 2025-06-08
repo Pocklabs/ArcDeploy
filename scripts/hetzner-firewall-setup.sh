@@ -119,10 +119,17 @@ create_firewall() {
     },
     {
       "direction": "in", 
-      "port": "8089",
+      "port": "8080",
       "protocol": "tcp",
       "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "Blocklet Server Main Interface"
+      "description": "Blocklet Server HTTP Interface"
+    },
+    {
+      "direction": "in", 
+      "port": "8443",
+      "protocol": "tcp",
+      "source_ips": ["0.0.0.0/0", "::/0"],
+      "description": "Blocklet Server HTTPS Interface"
     },
     {
       "direction": "in",
@@ -323,16 +330,23 @@ create_restrictive_firewall() {
     },
     {
       "direction": "in",
-      "port": "8089",
+      "port": "8080",
       "protocol": "tcp", 
       "source_ips": ["0.0.0.0/0", "::/0"],
-      "description": "Blocklet Server Main Interface"
+      "description": "Blocklet Server HTTP Interface"
+    },
+    {
+      "direction": "in",
+      "port": "8443",
+      "protocol": "tcp", 
+      "source_ips": ["0.0.0.0/0", "::/0"],
+      "description": "Blocklet Server HTTPS Interface"
     },
     {
       "direction": "in",
       "port": "80",
       "protocol": "tcp",
-      "source_ips": ["0.0.0.0/0", "::/0"], 
+      "source_ips": ["0.0.0.0/0", "::/0"],
       "description": "HTTP Traffic"
     },
     {
@@ -474,8 +488,9 @@ main() {
     echo
     echo "Next steps:"
     echo "1. Test SSH access: ssh -p 2222 arcblock@$(api_call "GET" "/servers/$server_id" | jq -r '.server.public_net.ipv4.ip')"
-    echo "2. Access Blocklet Server: http://$(api_call "GET" "/servers/$server_id" | jq -r '.server.public_net.ipv4.ip'):8089"
-    echo "3. Monitor firewall: $0 status"
+    echo "2. Access Blocklet Server HTTP: http://$(api_call "GET" "/servers/$server_id" | jq -r '.server.public_net.ipv4.ip'):8080"
+    echo "3. Access Blocklet Server HTTPS: https://$(api_call "GET" "/servers/$server_id" | jq -r '.server.public_net.ipv4.ip'):8443"
+    echo "4. Monitor firewall: $0 status"
 }
 
 # Handle Ctrl+C gracefully

@@ -2,6 +2,46 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.3] - 2025-06-08
+
+### 🔧 Debug Scripts Comprehensive Update
+
+#### Complete Debug Infrastructure Overhaul
+- **BREAKING**: Completely rewrote all debug and setup scripts to align with native installation
+- Updated `scripts/debug_commands.sh` with 30+ comprehensive diagnostic checks for native deployment
+- Completely rewrote `scripts/validate-setup.sh` with 16 test categories for native installation validation
+- Fully rewrote `scripts/manual_recovery.sh` with 22-step native installation recovery process
+- Updated `scripts/setup.sh` to version 4.0.0 with streamlined native installation process
+- Updated `scripts/hetzner-firewall-setup.sh` with correct port configurations (8080/8443)
+
+#### Architecture Alignment
+- **BREAKING**: Removed all container/Podman/Docker references from debug scripts
+- Updated all scripts to use `/opt/blocklet-server` directory structure
+- Migrated all port references from 8089 to 8080/8443 throughout debug infrastructure
+- Added comprehensive Node.js, npm, and Blocklet CLI validation
+- Integrated nginx and Redis service monitoring and validation
+- Added native systemd service management throughout all scripts
+
+#### Enhanced Debugging Capabilities
+- Added comprehensive health check automation and monitoring
+- Implemented real-time service status validation
+- Added system resource monitoring and alerting
+- Enhanced security configuration validation
+- Added performance metrics and optimization checks
+- Integrated log analysis and troubleshooting automation
+
+#### Documentation Updates
+- Updated `docs/DEBUGGING_GUIDE.md` and `docs/TROUBLESHOOTING.md` to remove legacy references
+- Created comprehensive `DEBUG_SCRIPTS_UPDATE_SUMMARY.md` with complete change documentation
+- Added `VERIFICATION_CHECKLIST.md` for deployment validation
+- All debug documentation now reflects native installation architecture
+
+#### Quality Assurance
+- Zero legacy references remaining in functional code
+- Complete alignment with `cloud-init.yaml` implementation
+- Enhanced error handling and recovery procedures
+- Comprehensive testing and validation capabilities
+
 ## [4.0.2] - 2025-06-07
 
 ### 📚 Comprehensive Documentation Updates

@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# Arcblock Blocklet Server Setup Script
-# Complete installation and configuration for Hetzner Cloud
+# ArcDeploy Native Installation Setup Script
+# Complete native installation and configuration for Blocklet Server
 
 set -euo pipefail
 
 # Configuration
-readonly SCRIPT_VERSION="2.0.0"
+readonly SCRIPT_VERSION="4.0.0"
 readonly LOG_FILE="/var/log/arcblock-setup.log"
 readonly USER="arcblock"
 readonly SSH_PORT="2222"
+readonly BLOCKLET_DIR="/opt/blocklet-server"
 
 # Colors for output
 readonly RED='\033[0;31m'
@@ -44,13 +45,30 @@ error_exit() {
 # Trap errors
 trap 'error_exit "Script failed at line $LINENO"' ERR
 
-log "Starting Arcblock Blocklet Server setup v$SCRIPT_VERSION"
+log "Starting ArcDeploy Native Installation v$SCRIPT_VERSION"
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    error_exit "This script must be run as root"
+fi
+
+# Create arcblock user if it doesn't exist
+if ! id "$USER" &>/dev/null; then
+    log "Creating $USER user"
+    useradd -m -G users,admin,sudo -s /bin/bash "$USER"
+    echo "$USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USER"
+fi
 
 # Create user directories
 log "Setting up directories"
-mkdir -p /home/$USER/{blocklet-server,backups,.config/containers,.local/share/containers}
-chown -R $USER:$USER /home/$USER
-chmod 755 /home/$USER/blocklet-server
+mkdir -p "$BLOCKLET_DIR"/{bin,data,config,logs}
+chown -R "$USER:$USER" "$BLOCKLET_DIR"
+chmod 755 "$BLOCKLET_DIR"
+
+# Update system packages
+log "Updating system packages"
+apt-get update || error_exit "Failed to update package list"
+apt-get upgrade -y || error_exit "Failed to upgrade packages"
 
 # Install Node.js LTS
 log "Installing Node.js LTS"
@@ -59,7 +77,6 @@ apt-get install -y nodejs || error_exit "Failed to install Node.js"
 
 # Install additional packages
 log "Installing additional packages"
-apt-get update
 apt-get install -y \
     git \
     build-essential \
@@ -75,126 +92,91 @@ apt-get install -y \
     unzip \
     fail2ban \
     ufw \
-    podman \
     python3 \
-    python3-pip || error_exit "Failed to install packages"
-
-# Configure Podman for rootless operation
-log "Configuring Podman for rootless containers"
-echo "$USER:100000:65536" >> /etc/subuid
-echo "$USER:100000:65536" >> /etc/subgid
-loginctl enable-linger $USER || error_exit "Failed to enable user linger"
-
-# Configure Podman registries
-log "Configuring container registries"
-cat > /home/$USER/.config/containers/registries.conf << 'EOF'
-[registries.search]
-registries = ['docker.io', 'registry.fedoraproject.org', 'quay.io', 'registry.access.redhat.com']
-
-[registries.insecure]
-registries = []
-
-[registries.block]
-registries = []
-EOF
-
-cat > /home/$USER/.config/containers/storage.conf << 'EOF'
-[storage]
-driver = "overlay"
-runroot = "/run/user/1000/containers"
-graphroot = "/home/arcblock/.local/share/containers/storage"
-
-[storage.options]
-additionalimagestores = []
-
-[storage.options.overlay]
-mountopt = "nodev,metacopy=on"
-EOF
-
-chown -R $USER:$USER /home/$USER/.config
-
-# Initialize Podman for user
-log "Initializing Podman for $USER user"
-sudo -u $USER podman system migrate 2>/dev/null || true
-sudo -u $USER systemctl --user enable podman.socket || error_exit "Failed to enable Podman socket"
-sudo -u $USER systemctl --user start podman.socket || error_exit "Failed to start Podman socket"
+    python3-pip \
+    nginx \
+    sqlite3 \
+    redis-server \
+    curl \
+    wget || error_exit "Failed to install packages"
 
 # Install Blocklet CLI
 log "Installing Blocklet CLI"
-sudo -u $USER npm install -g @blocklet/cli || warning "Blocklet CLI installation failed"
+npm install -g @blocklet/cli || error_exit "Failed to install @blocklet/cli"
 
-# Pull Blocklet Server image
-log "Pulling Blocklet Server container image"
-sudo -u $USER podman pull arcblock/blocklet-server:latest || error_exit "Failed to pull Blocklet Server image"
+# Verify installations
+log "Verifying installations"
+node --version || error_exit "Node.js verification failed"
+npm --version || error_exit "npm verification failed"
+blocklet --version || error_exit "Blocklet CLI verification failed"
 
-# Create compose configuration
-log "Creating compose configuration"
-cat > /home/$USER/blocklet-server/compose.yaml << 'EOF'
-version: '3.8'
+# Configure Redis
+log "Configuring Redis"
+systemctl enable redis-server
+systemctl start redis-server || error_exit "Failed to start Redis"
 
-services:
-  blocklet-server:
-    image: arcblock/blocklet-server:latest
-    container_name: blocklet-server
-    restart: unless-stopped
-    ports:
-      - "8089:8089"
-      - "80:80"
-      - "443:443"
-    volumes:
-      - blocklet-data:/opt/abtnode/data
-      - blocklet-config:/opt/abtnode/config
-      - blocklet-logs:/opt/abtnode/logs
-    environment:
-      - ABT_NODE_LOG_LEVEL=info
-      - ABT_NODE_ENV=production
-      - ABT_NODE_HOST=0.0.0.0
-      - ABT_NODE_PORT=8089
-      - ABT_NODE_DATA_DIR=/opt/abtnode/data
-      - ABT_NODE_CONFIG_DIR=/opt/abtnode/config
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8089/api/did"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    labels:
-      - "io.containers.autoupdate=registry"
+# Configure Nginx
+log "Configuring Nginx"
+cat > /etc/nginx/sites-available/blocklet-server << 'EOF'
+server {
+    listen 80;
+    server_name _;
 
-volumes:
-  blocklet-data:
-    driver: local
-  blocklet-config:
-    driver: local
-  blocklet-logs:
-    driver: local
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
 EOF
 
-chown $USER:$USER /home/$USER/blocklet-server/compose.yaml
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/blocklet-server /etc/nginx/sites-enabled/
+nginx -t || error_exit "Nginx configuration test failed"
+systemctl enable nginx
+systemctl start nginx || error_exit "Failed to start Nginx"
+
+# Initialize Blocklet Server
+log "Initializing Blocklet Server"
+sudo -u "$USER" blocklet server init "$BLOCKLET_DIR" || warning "Server init failed, using manual setup"
+sudo -u "$USER" mkdir -p "$BLOCKLET_DIR"/{bin,data,config,logs}
+sudo -u "$USER" blocklet server config set dataDir "$BLOCKLET_DIR/data" || true
+sudo -u "$USER" blocklet server config set port 8080 || true
 
 # Create systemd service
 log "Creating systemd service"
 cat > /etc/systemd/system/blocklet-server.service << 'EOF'
 [Unit]
 Description=Arcblock Blocklet Server
-After=network-online.target
+After=network-online.target redis.service
 Wants=network-online.target
-RequiresMountsFor=/home/arcblock
+Requires=redis.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 User=arcblock
 Group=arcblock
-WorkingDirectory=/home/arcblock/blocklet-server
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=PODMAN_SYSTEMD_UNIT=%n
-ExecStartPre=/usr/bin/podman compose down --remove-orphans
-ExecStart=/usr/bin/podman compose up -d
-ExecStop=/usr/bin/podman compose down --timeout 30
-ExecReload=/usr/bin/podman compose restart
-TimeoutStartSec=300
-TimeoutStopSec=120
+WorkingDirectory=/opt/blocklet-server
+Environment=NODE_ENV=production
+Environment=BLOCKLET_LOG_LEVEL=info
+Environment=BLOCKLET_HOST=0.0.0.0
+Environment=BLOCKLET_PORT=8080
+Environment=BLOCKLET_DATA_DIR=/opt/blocklet-server/data
+Environment=BLOCKLET_CONFIG_DIR=/opt/blocklet-server/config
+ExecStart=/usr/local/bin/blocklet server start --config-dir /opt/blocklet-server/config
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=blocklet-server
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
@@ -246,11 +228,17 @@ filter = sshd
 logpath = /var/log/auth.log
 banaction = iptables-multiport
 
+[nginx-http-auth]
+enabled = true
+port = http,https
+logpath = /var/log/nginx/error.log
+maxretry = 6
+
 [blocklet-server]
 enabled = true
-port = 8089,80,443
+port = 8080
 filter = blocklet-server
-logpath = /home/arcblock/blocklet-server/logs/*.log
+logpath = /opt/blocklet-server/logs/*.log
 maxretry = 5
 bantime = 3600
 EOF
@@ -261,9 +249,7 @@ failregex = ^.*\[.*\] .*Failed login attempt from <HOST>.*$
             ^.*\[.*\] .*Unauthorized access from <HOST>.*$
             ^.*\[.*\] .*Invalid authentication from <HOST>.*$
             ^.*\[.*\] .*Blocked request from <HOST>.*$
-            ^.*\s+<HOST>\s+.*"(GET|POST|PUT|DELETE).*" (401|403|429)
 ignoreregex = ^.*\[.*\] .*Valid login from <HOST>.*$
-              ^.*\s+<HOST>\s+.*"(GET|POST|PUT|DELETE).*" (200|201|202|204)
 EOF
 
 # Configure firewall
@@ -271,8 +257,9 @@ log "Configuring UFW firewall"
 ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow $SSH_PORT/tcp comment 'SSH'
-ufw allow 8089/tcp comment 'Blocklet Server'
+ufw allow "$SSH_PORT"/tcp comment 'SSH'
+ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
 ufw allow 80/tcp comment 'HTTP'
 ufw allow 443/tcp comment 'HTTPS'
 ufw --force enable
@@ -299,9 +286,6 @@ net.ipv4.tcp_rmem = 4096 65536 134217728
 net.ipv4.tcp_wmem = 4096 65536 134217728
 net.core.netdev_max_backlog = 5000
 
-# Container networking
-net.ipv4.ip_forward = 1
-
 # Security hardening
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.all.send_redirects = 0
@@ -317,11 +301,11 @@ sysctl -p
 
 # Create health check script
 log "Creating health check script"
-cat > /home/$USER/blocklet-server/healthcheck.sh << 'EOF'
+cat > "$BLOCKLET_DIR/healthcheck.sh" << 'EOF'
 #!/bin/bash
 set -euo pipefail
 
-readonly LOGFILE="/home/arcblock/blocklet-server/logs/health.log"
+readonly LOGFILE="/opt/blocklet-server/logs/health.log"
 readonly TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 readonly MAX_ATTEMPTS=12
 readonly SLEEP_INTERVAL=10
@@ -337,7 +321,7 @@ wait_for_service() {
     log "INFO: Waiting for Blocklet Server to become ready..."
     
     while [ $attempts -lt $MAX_ATTEMPTS ]; do
-        if curl -sf --max-time 5 http://localhost:8089/api/did >/dev/null 2>&1; then
+        if curl -sf --max-time 5 http://localhost:8080 >/dev/null 2>&1; then
             log "INFO: Blocklet Server is ready and responding"
             return 0
         fi
@@ -360,14 +344,6 @@ else
     exit 1
 fi
 
-# Check container
-if podman ps --filter "name=blocklet-server" --format "{{.Status}}" | grep -q "Up"; then
-    log "INFO: Blocklet Server container is running"
-else
-    log "ERROR: Blocklet Server container is not running"
-    exit 1
-fi
-
 # Check HTTP endpoint
 if wait_for_service; then
     log "INFO: Blocklet Server health check passed"
@@ -377,7 +353,7 @@ else
 fi
 
 # Check disk space
-readonly DISK_USAGE=$(df /home/arcblock | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
+readonly DISK_USAGE=$(df /opt/blocklet-server | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
 if [ "$DISK_USAGE" -gt 85 ]; then
     log "WARN: High disk usage: ${DISK_USAGE}%"
 else
@@ -395,110 +371,12 @@ fi
 log "INFO: Health check completed successfully"
 EOF
 
-chmod +x /home/$USER/blocklet-server/healthcheck.sh
-chown $USER:$USER /home/$USER/blocklet-server/healthcheck.sh
-
-# Create backup script
-log "Creating backup script"
-cat > /home/$USER/blocklet-server/backup.sh << 'EOF'
-#!/bin/bash
-set -euo pipefail
-
-readonly BACKUP_DIR="/home/arcblock/backups"
-readonly TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-readonly BACKUP_FILE="blocklet-backup-${TIMESTAMP}.tar.gz"
-readonly LOG_FILE="/home/arcblock/blocklet-server/logs/backup.log"
-
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE"
-}
-
-mkdir -p "$BACKUP_DIR"
-log "INFO: Starting backup process"
-
-# Stop container for consistent backup
-log "INFO: Stopping container for consistent backup"
-if ! podman stop blocklet-server 2>/dev/null; then
-    log "WARN: Failed to stop container gracefully, continuing with backup"
-fi
-
-# Create backup
-if tar -czf "${BACKUP_DIR}/${BACKUP_FILE}" \
-    -C /home/arcblock \
-    .local/share/containers/storage/volumes/blocklet-server_blocklet-data \
-    .local/share/containers/storage/volumes/blocklet-server_blocklet-config \
-    blocklet-server/compose.yaml 2>/dev/null; then
-    log "INFO: Backup created successfully: ${BACKUP_DIR}/${BACKUP_FILE}"
-else
-    log "ERROR: Backup creation failed"
-fi
-
-# Restart container
-log "INFO: Restarting container"
-if ! systemctl start blocklet-server; then
-    log "ERROR: Failed to restart Blocklet Server service"
-    exit 1
-fi
-
-# Remove old backups
-find "$BACKUP_DIR" -name "blocklet-backup-*.tar.gz" -mtime +7 -delete 2>/dev/null || true
-log "INFO: Cleanup completed - removed backups older than 7 days"
-log "INFO: Backup process completed successfully"
-EOF
-
-chmod +x /home/$USER/blocklet-server/backup.sh
-chown $USER:$USER /home/$USER/blocklet-server/backup.sh
-
-# Configure log rotation
-log "Configuring log rotation"
-cat > /etc/logrotate.d/blocklet-server << 'EOF'
-/home/arcblock/blocklet-server/logs/*.log {
-    daily
-    missingok
-    rotate 14
-    compress
-    delaycompress
-    notifempty
-    copytruncate
-    su arcblock arcblock
-    postrotate
-        systemctl reload blocklet-server 2>/dev/null || true
-    endscript
-}
-EOF
+chmod +x "$BLOCKLET_DIR/healthcheck.sh"
+chown "$USER:$USER" "$BLOCKLET_DIR/healthcheck.sh"
 
 # Setup cron jobs
 log "Setting up monitoring cron jobs"
-echo "*/5 * * * * /home/arcblock/blocklet-server/healthcheck.sh >/dev/null 2>&1" | sudo -u $USER crontab -
-echo "0 2 * * 0 /home/arcblock/blocklet-server/backup.sh >/dev/null 2>&1" | sudo -u $USER crontab -
-
-# Configure auto-updates
-log "Configuring container auto-updates"
-cat > /etc/systemd/system/podman-auto-update.timer << 'EOF'
-[Unit]
-Description=Podman auto-update timer
-
-[Timer]
-OnCalendar=daily
-RandomizedDelaySec=3600
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-cat > /etc/systemd/system/podman-auto-update.service << 'EOF'
-[Unit]
-Description=Podman auto-update service
-
-[Service]
-Type=oneshot
-User=arcblock
-Group=arcblock
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStart=/usr/bin/podman auto-update
-ExecStartPost=/usr/bin/systemctl restart blocklet-server
-EOF
+echo "*/5 * * * * $BLOCKLET_DIR/healthcheck.sh >/dev/null 2>&1" | sudo -u "$USER" crontab -
 
 # Enable and start services
 log "Enabling and starting services"
@@ -506,12 +384,9 @@ systemctl enable fail2ban
 systemctl start fail2ban
 systemctl daemon-reload
 systemctl enable blocklet-server
-systemctl enable podman-auto-update.timer
-systemctl start podman-auto-update.timer
 
 # Start Blocklet Server
 log "Starting Blocklet Server"
-sudo -u $USER systemctl --user start podman.socket
 systemctl start blocklet-server
 
 # Wait for service to be ready
@@ -520,7 +395,7 @@ attempts=0
 max_attempts=24
 
 while [ $attempts -lt $max_attempts ]; do
-    if curl -sf --max-time 10 http://localhost:8089/api/did >/dev/null 2>&1; then
+    if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
         success "Blocklet Server is ready and responding!"
         break
     fi
@@ -548,33 +423,37 @@ apt-get autoclean
 # Final verification
 log "Performing final verification"
 systemctl is-active --quiet blocklet-server || error_exit "Blocklet Server service is not active"
-sudo -u $USER podman ps | grep -q blocklet-server || warning "Blocklet Server container may still be starting"
+systemctl is-active --quiet nginx || error_exit "Nginx service is not active"
+systemctl is-active --quiet redis-server || error_exit "Redis service is not active"
 
 # Create completion marker
-touch /home/$USER/blocklet-server/.setup-complete
-chown $USER:$USER /home/$USER/blocklet-server/.setup-complete
+touch "$BLOCKLET_DIR/.native-install-complete"
+chown "$USER:$USER" "$BLOCKLET_DIR/.native-install-complete"
 
 # Get server IP
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
-success "Arcblock Blocklet Server setup completed successfully!"
+success "ArcDeploy Native Installation completed successfully!"
 log "Server IP: $SERVER_IP"
 log "SSH Access: ssh -p $SSH_PORT $USER@$SERVER_IP"
-log "Web Interface: http://$SERVER_IP:8089"
+log "Web Interface: http://$SERVER_IP:8080"
 log "Setup completed at: $(date)"
 
 echo ""
 echo "=========================================="
-echo "Arcblock Blocklet Server Setup Complete!"
+echo "ArcDeploy Native Installation Complete!"
 echo "=========================================="
 echo ""
 echo "Access Information:"
 echo "- SSH: ssh -p $SSH_PORT $USER@$SERVER_IP"
-echo "- Web Interface: http://$SERVER_IP:8089"
-echo "- Health Check: sudo -u $USER /home/$USER/blocklet-server/healthcheck.sh"
+echo "- Web Interface (Direct): http://$SERVER_IP:8080"
+echo "- Web Interface (Nginx): http://$SERVER_IP"
+echo "- HTTPS Interface: https://$SERVER_IP:8443"
 echo ""
 echo "Services Status:"
 echo "- Blocklet Server: $(systemctl is-active blocklet-server)"
+echo "- Nginx: $(systemctl is-active nginx)"
+echo "- Redis: $(systemctl is-active redis-server)"
 echo "- Fail2ban: $(systemctl is-active fail2ban)"
 echo "- UFW Firewall: $(ufw status | head -1)"
 echo ""
@@ -587,5 +466,8 @@ echo ""
 echo "For support, check the logs:"
 echo "- Setup log: $LOG_FILE"
 echo "- Service logs: journalctl -u blocklet-server -f"
-echo "- Health logs: /home/$USER/blocklet-server/logs/health.log"
+echo "- Health logs: $BLOCKLET_DIR/logs/health.log"
+echo "- Nginx logs: tail -f /var/log/nginx/access.log"
+echo ""
+echo "🔗 For support: https://github.com/Pocklabs/ArcDeploy"
 echo "=========================================="

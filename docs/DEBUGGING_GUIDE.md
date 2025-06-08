@@ -350,7 +350,8 @@ sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow 2222/tcp
-sudo ufw allow 8089/tcp
+sudo ufw allow 8080/tcp
+sudo ufw allow 8443/tcp
 sudo ufw --force enable
 ```
 
@@ -385,7 +386,7 @@ sudo systemctl is-active blocklet-server
 sudo -u arcblock podman ps | grep blocklet-server
 
 # Test HTTP endpoint
-curl -f http://localhost:8089/api/did
+curl -f http://localhost:8080
 
 # Check SSH access (from another machine)
 ssh -p 2222 arcblock@YOUR_SERVER_IP
@@ -424,7 +425,7 @@ sudo -u arcblock podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # Network check
 echo -e "\nNetwork check:"
-if curl -sf --max-time 5 http://localhost:8089/api/did >/dev/null; then
+if curl -sf --max-time 5 http://localhost:8080 >/dev/null; then
     echo "  Blocklet Server: ✅ Responding"
 else
     echo "  Blocklet Server: ❌ Not responding"

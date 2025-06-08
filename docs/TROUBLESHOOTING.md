@@ -177,6 +177,9 @@ The current version uses ports 8080/8443, not 8089. Update any references:
 # Test current endpoint
 curl http://YOUR_SERVER_IP:8080
 
+# Test HTTPS endpoint
+curl -k https://YOUR_SERVER_IP:8443
+
 # NOT the old port
 # curl http://YOUR_SERVER_IP:8089  # This won't work
 ```
@@ -194,7 +197,7 @@ sudo systemctl status nginx
 # Verify proxy configuration
 sudo cat /etc/nginx/sites-available/blocklet-server
 
-# Should proxy to 127.0.0.1:8080, not 8089
+# Should proxy to 127.0.0.1:8080
 ```
 
 ### 5. Package Installation Issues
@@ -363,32 +366,15 @@ sudo -u arcblock podman pull arcblock/blocklet-server:latest
 # Create compose file if missing
 sudo mkdir -p /home/arcblock/blocklet-server
 sudo tee /home/arcblock/blocklet-server/compose.yaml > /dev/null << 'EOF'
-version: '3.8'
-services:
-  blocklet-server:
-    image: arcblock/blocklet-server:latest
-    container_name: blocklet-server
-    restart: unless-stopped
-    ports:
-      - "8089:8089"
-      - "80:80"
-      - "443:443"
-    volumes:
-      - blocklet-data:/opt/abtnode/data
-      - blocklet-config:/opt/abtnode/config
-    environment:
-      - ABT_NODE_LOG_LEVEL=info
-      - ABT_NODE_ENV=production
-      - ABT_NODE_HOST=0.0.0.0
-      - ABT_NODE_PORT=8089
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8089/api/did"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-volumes:
-  blocklet-data:
-  blocklet-config:
+# Note: This version now uses native installation, not containers
+# Check service status instead:
+sudo systemctl status blocklet-server
+
+# Check native service configuration:
+sudo cat /etc/systemd/system/blocklet-server.service
+
+# Verify Blocklet Server configuration:
+sudo -u arcblock blocklet server config list
 EOF
 sudo chown -R arcblock:arcblock /home/arcblock/blocklet-server
 ```
@@ -397,23 +383,23 @@ sudo chown -R arcblock:arcblock /home/arcblock/blocklet-server
 
 #### Issue: API endpoint not responding
 ```bash
-curl -f http://localhost:8089/api/did
-# Shows: curl: (7) Failed to connect to localhost port 8089
+curl -f http://localhost:8080
+# Shows: curl: (7) Failed to connect to localhost port 8080
 ```
 
 **Diagnosis:**
 ```bash
 # Check if port is listening
-sudo netstat -tlnp | grep 8089
+sudo netstat -tlnp | grep 8080
 
 # Check firewall
 sudo ufw status
 
-# Check container port mapping
-sudo -u arcblock podman port blocklet-server
-
 # Check service status
 sudo systemctl status blocklet-server
+
+# Check nginx proxy
+sudo systemctl status nginx
 
 # Check container health
 sudo -u arcblock podman inspect blocklet-server | grep -A 10 -B 10 Health
@@ -422,17 +408,15 @@ sudo -u arcblock podman inspect blocklet-server | grep -A 10 -B 10 Health
 **Solutions:**
 ```bash
 # Configure firewall
-sudo ufw allow 8089/tcp
+sudo ufw allow 8080/tcp
+sudo ufw allow 8443/tcp
 
 # Restart service
 sudo systemctl restart blocklet-server
 
-# Check container startup
-sudo -u arcblock podman compose -f /home/arcblock/blocklet-server/compose.yaml up -d
-
 # Wait for service to be ready
 for i in {1..12}; do
-  if curl -sf http://localhost:8089/api/did; then
+  if curl -sf http://localhost:8080; then
     echo "Service is ready!"
     break
   fi
@@ -531,7 +515,8 @@ sudo ufw --force reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow 2222/tcp
-sudo ufw allow 8089/tcp
+sudo ufw allow 8080/tcp
+sudo ufw allow 8443/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw --force enable
@@ -562,8 +547,9 @@ curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/deb
 
 # Service health check
 sudo systemctl is-active blocklet-server
-sudo -u arcblock podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-curl -sf http://localhost:8089/api/did && echo "API OK" || echo "API FAILED"
+sudo systemctl status blocklet-server --no-pager
+curl -sf http://localhost:8080 && echo "HTTP OK" || echo "HTTP FAILED"
+curl -k -sf https://localhost:8443 && echo "HTTPS OK" || echo "HTTPS FAILED"
 ```
 
 ## Known Issues and Workarounds
@@ -609,7 +595,7 @@ df -h
 top -bn1 | head -20
 
 # Check network connectivity
-ss -tlnp | grep -E "(8089|2222)"
+ss -tlnp | grep -E "(8080|8443|2222)"
 ping -c 3 8.8.8.8
 
 # Check system logs
@@ -667,12 +653,13 @@ If you're completely locked out:
 # Status checks
 sudo cloud-init status --long
 sudo systemctl status blocklet-server
-sudo -u arcblock podman ps
-curl -f http://localhost:8089/api/did
+sudo systemctl status nginx
+sudo systemctl status redis-server
+curl -f http://localhost:8080
 
 # Service management
 sudo systemctl restart blocklet-server
-sudo -u arcblock podman restart blocklet-server
+sudo systemctl restart nginx
 sudo systemctl restart ssh
 
 # Log viewing
