@@ -7,8 +7,15 @@ set -euo pipefail
 
 # Script metadata
 readonly SCRIPT_VERSION="1.0.0"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Only set if not already set to avoid readonly errors
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [[ -z "${PROJECT_ROOT:-}" ]]; then
+    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 readonly TEMPLATES_DIR="$PROJECT_ROOT/templates"
 readonly CONFIG_DIR="$PROJECT_ROOT/config"
 readonly OUTPUT_DIR="$PROJECT_ROOT/generated"
@@ -142,12 +149,14 @@ set_provider_defaults() {
             DEFAULT_REGION="${HETZNER_DEFAULT_LOCATION:-nbg1}"
             DEFAULT_SERVER_TYPE="${HETZNER_MIN_SERVER_TYPE:-cx31}"
             METADATA_SERVICE_URL="http://169.254.169.254/hetzner/v1/metadata"
+            export METADATA_SERVICE_URL
             ;;
         aws)
             CLOUD_PROVIDER_NAME="Amazon Web Services"
             DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
             DEFAULT_SERVER_TYPE="${AWS_MIN_INSTANCE_TYPE:-t3.large}"
             METADATA_SERVICE_URL="http://169.254.169.254/latest/meta-data"
+            export METADATA_SERVICE_URL
             # AWS specific packages
             ADDITIONAL_PACKAGES="
   - awscli
@@ -158,6 +167,7 @@ set_provider_defaults() {
             DEFAULT_REGION="${GCP_DEFAULT_REGION:-us-central1}"
             DEFAULT_SERVER_TYPE="${GCP_MIN_INSTANCE_TYPE:-e2-standard-2}"
             METADATA_SERVICE_URL="http://metadata.google.internal/computeMetadata/v1"
+            export METADATA_SERVICE_URL
             # GCP specific packages
             ADDITIONAL_PACKAGES="
   - google-cloud-sdk"
@@ -167,6 +177,7 @@ set_provider_defaults() {
             DEFAULT_REGION="${AZURE_DEFAULT_REGION:-East US}"
             DEFAULT_SERVER_TYPE="${AZURE_MIN_INSTANCE_TYPE:-Standard_B2s}"
             METADATA_SERVICE_URL="http://169.254.169.254/metadata/instance"
+            export METADATA_SERVICE_URL
             # Azure specific packages
             ADDITIONAL_PACKAGES="
   - azure-cli"
@@ -176,18 +187,21 @@ set_provider_defaults() {
             DEFAULT_REGION="${DO_DEFAULT_REGION:-nyc1}"
             DEFAULT_SERVER_TYPE="${DO_MIN_DROPLET_SIZE:-s-2vcpu-4gb}"
             METADATA_SERVICE_URL="http://169.254.169.254/metadata/v1"
+            export METADATA_SERVICE_URL
             ;;
         linode)
             CLOUD_PROVIDER_NAME="Linode"
             DEFAULT_REGION="${LINODE_DEFAULT_REGION:-us-east}"
             DEFAULT_SERVER_TYPE="${LINODE_MIN_INSTANCE_TYPE:-g6-standard-2}"
             METADATA_SERVICE_URL="http://169.254.169.254/linode/v1"
+            export METADATA_SERVICE_URL
             ;;
         vultr)
             CLOUD_PROVIDER_NAME="Vultr"
             DEFAULT_REGION="${VULTR_DEFAULT_REGION:-ewr}"
             DEFAULT_SERVER_TYPE="${VULTR_MIN_INSTANCE_TYPE:-vc2-2c-4gb}"
             METADATA_SERVICE_URL="http://169.254.169.254/v1"
+            export METADATA_SERVICE_URL
             ;;
         *)
             error_exit "Unsupported cloud provider: $provider"
@@ -524,11 +538,15 @@ main() {
     fi
     
     # Set default values
-    template_file="${template_file:-$TEMPLATES_DIR/cloud-init.yaml.template}"
-    output_file="${output_file:-$OUTPUT_DIR/${provider}-cloud-init.yaml}"
+    local default_template="$TEMPLATES_DIR/cloud-init.yaml.template"
+    local default_output="$OUTPUT_DIR/${provider}-cloud-init.yaml"
+    template_file="${template_file:-$default_template}"
+    output_file="${output_file:-$default_output}"
     
     # Create output directory
-    mkdir -p "$(dirname "$output_file")"
+    local output_dir
+    output_dir="$(dirname "$output_file")"
+    mkdir -p "$output_dir"
     
     log "Starting ArcDeploy configuration generation..."
     log "Provider: $provider"

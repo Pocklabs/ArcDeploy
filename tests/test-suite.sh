@@ -13,15 +13,17 @@ readonly TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
 readonly TEST_CONFIGS_DIR="$SCRIPT_DIR/configs"
 readonly TEST_LOGS_DIR="$TEST_RESULTS_DIR/logs"
 
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly PURPLE='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[1;37m'
-readonly NC='\033[0m'
+# Colors for output (only set if not already set)
+if [[ -z "${RED:-}" ]]; then
+    readonly RED='\033[0;31m'
+    readonly GREEN='\033[0;32m'
+    readonly YELLOW='\033[1;33m'
+    readonly BLUE='\033[0;34m'
+    readonly PURPLE='\033[0;35m'
+    readonly CYAN='\033[0;36m'
+    readonly WHITE='\033[1;37m'
+    readonly NC='\033[0m'
+fi
 
 # Test counters
 TESTS_TOTAL=0
@@ -131,15 +133,19 @@ run_test() {
 
 # Setup test environment
 setup_test_environment() {
-    log "Setting up test environment..."
+    # Set test-friendly log file location before loading anything
+    export SETUP_LOG="/tmp/arcblock-test-setup.log"
+    export HEALTH_LOG="/tmp/arcblock-test-health.log"
     
-    # Create test directories
+    # Create test directories first
     mkdir -p "$TEST_RESULTS_DIR"
     mkdir -p "$TEST_LOGS_DIR"
     mkdir -p "$TEST_CONFIGS_DIR"
     
     # Clear previous test logs
     > "$TEST_LOGS_DIR/test-suite.log"
+    
+    log "Setting up test environment..."
     
     # Load common library if available
     if [ -f "$PROJECT_ROOT/scripts/lib/common.sh" ]; then
@@ -170,26 +176,31 @@ test_config_parsing() {
         return 1
     fi
     
-    # Test configuration loading
-    local original_user_name="$USER_NAME"
-    unset USER_NAME
-    
-    # shellcheck source=../config/arcdeploy.conf
-    source "$config_file" 2>/dev/null
-    
-    if [ -z "${USER_NAME:-}" ]; then
-        return 1
-    fi
-    
-    # Test required variables
-    local required_vars=("BLOCKLET_BASE_DIR" "SSH_PORT" "BLOCKLET_HTTP_PORT")
-    for var in "${required_vars[@]}"; do
-        if [ -z "${!var:-}" ]; then
-            return 1
+    # Test configuration loading in a subshell to avoid conflicts
+    (
+        # Set test-friendly log paths
+        export SETUP_LOG="/tmp/test-setup.log"
+        export HEALTH_LOG="/tmp/test-health.log"
+        
+        # shellcheck source=../config/arcdeploy.conf
+        source "$config_file" 2>/dev/null
+        
+        if [ -z "${USER_NAME:-}" ]; then
+            exit 1
         fi
-    done
+        
+        # Test required variables
+        local required_vars=("BLOCKLET_BASE_DIR" "SSH_PORT" "BLOCKLET_HTTP_PORT")
+        for var in "${required_vars[@]}"; do
+            if [ -z "${!var:-}" ]; then
+                exit 1
+            fi
+        done
+        
+        exit 0
+    )
     
-    return 0
+    return $?
 }
 
 # Test common library functions
@@ -453,14 +464,20 @@ test_yaml_syntax() {
             if command -v python3 >/dev/null 2>&1; then
                 if ! python3 -c "
 import yaml
+import sys
 try:
     with open('$file', 'r') as f:
         content = f.read()
         # Skip template files with substitution variables
-        if '${' not in content:
+        if '\${' not in content:
             yaml.safe_load(content)
-except Exception:
-    exit(1)
+    print('YAML syntax validation: PASSED')
+except yaml.YAMLError as e:
+    print('YAML syntax validation: FAILED - ' + str(e))
+    sys.exit(1)
+except Exception as e:
+    print('Validation error: ' + str(e))
+    sys.exit(1)
 " 2>/dev/null; then
                     return 1
                 fi
@@ -742,8 +759,11 @@ main() {
     echo -e "${WHITE}============================================${NC}"
     echo ""
     
-    log "Starting test execution..."
-    log "Categories to run: ${categories[*]}"
+    # Only log after setup is complete
+    if [ -f "$TEST_LOGS_DIR/test-suite.log" ]; then
+        log "Starting test execution..."
+        log "Categories to run: ${categories[*]}"
+    fi
     
     # Run tests by category
     for category in "${categories[@]}"; do

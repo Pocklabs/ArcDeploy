@@ -5,8 +5,15 @@
 
 # Version and metadata
 readonly COMMON_LIB_VERSION="1.0.0"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Only set if not already set to avoid readonly errors
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [[ -z "${PROJECT_ROOT:-}" ]]; then
+    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
 
 # Load configuration if available
 if [ -f "$PROJECT_ROOT/config/arcdeploy.conf" ]; then
@@ -19,17 +26,27 @@ fi
 # ============================================================================
 
 # Color codes for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly PURPLE='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[1;37m'
-readonly NC='\033[0m' # No Color
+# Colors for output (only set if not already set)
+if [[ -z "${RED:-}" ]]; then
+    readonly RED='\033[0;31m'
+    readonly GREEN='\033[0;32m'
+    readonly YELLOW='\033[1;33m'
+    readonly BLUE='\033[0;34m'
+    readonly PURPLE='\033[0;35m'
+    readonly CYAN='\033[0;36m'
+    readonly WHITE='\033[1;37m'
+    readonly NC='\033[0m' # No Color
+fi
 
 # Log file (use config if available, otherwise default)
-readonly LOG_FILE="${SETUP_LOG:-/var/log/arcblock-setup.log}"
+if [[ -z "${LOG_FILE:-}" ]]; then
+    # Use writable location for non-root users
+    if [ "$EUID" -eq 0 ]; then
+        readonly LOG_FILE="${SETUP_LOG:-/var/log/arcblock-setup.log}"
+    else
+        readonly LOG_FILE="${SETUP_LOG:-/tmp/arcblock-setup.log}"
+    fi
+fi
 
 # Logging functions
 log() {
@@ -438,7 +455,7 @@ load_config() {
         source "$config_file"
         debug "Loaded configuration from: $config_file"
     else
-        warning "Configuration file not found: $config_file"
+        debug "Configuration file not found: $config_file"
     fi
 }
 
@@ -531,7 +548,7 @@ init_common_lib() {
     debug "Common library v$COMMON_LIB_VERSION initialized"
 }
 
-# Auto-initialize when sourced
+# Auto-initialize when sourced (disable argument warning)
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    init_common_lib
+    init_common_lib "$@"
 fi

@@ -4,10 +4,17 @@
 # This library manages software dependencies, versions, and compatibility checks
 
 readonly DEPS_LIB_VERSION="1.0.0"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Only set if not already set to avoid readonly errors
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [[ -z "${PROJECT_ROOT:-}" ]]; then
+    readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
 readonly DEPS_CACHE_DIR="/tmp/arcdeploy-deps-cache"
 readonly DEPS_LOG_FILE="/var/log/arcdeploy-dependencies.log"
+export DEPS_LOG_FILE
 
 # Load common library if available
 if [ -f "$SCRIPT_DIR/common.sh" ]; then
@@ -47,6 +54,7 @@ declare -A CLOUD_DEPS=(
     ["az"]="optional:2.30.0:latest:Azure CLI"
     ["doctl"]="optional:1.70.0:latest:DigitalOcean CLI"
 )
+export CLOUD_DEPS
 
 # Security and monitoring tools
 declare -A SECURITY_DEPS=(
@@ -69,7 +77,7 @@ init_deps_cache() {
 # Parse dependency specification
 parse_dep_spec() {
     local dep_spec="$1"
-    local priority level min_version max_version description
+    local priority min_version max_version description
     
     IFS=':' read -r priority min_version max_version description <<< "$dep_spec"
     
@@ -175,7 +183,7 @@ check_dependency() {
     local dep_spec="$2"
     local result_var="$3"
     
-    local spec_parts priority min_version max_version description
+    local priority min_version max_version description
     IFS='|' read -r priority min_version max_version description <<< "$(parse_dep_spec "$dep_spec")"
     
     local current_version status message
