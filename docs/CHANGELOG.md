@@ -2,7 +2,7 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
-## [4.0.5] - 2025-01-27
+## [4.0.5] - 2025-06-08
 
 ### 🔧 Code Quality and Shell Script Improvements
 
