@@ -55,10 +55,12 @@ hetzner-api-token.txt
 backup/
 backups/
 
-# Test files
-test-*.yaml
-test-*.sh
-testing/
+# Test files (temporary test outputs, not framework)
+test-output-*.yaml
+test-results-*.sh
+temp-test-*
+testing-output/
+test-data/
 
 # Local configuration
 config.local.*
