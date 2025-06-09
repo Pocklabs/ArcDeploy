@@ -126,3 +126,6 @@ local-settings.*
 # Reports folder
 Reports/
 
+# Scripts folder (v5.0.0 development)
+scripts/
+
