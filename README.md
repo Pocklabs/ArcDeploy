@@ -1,12 +1,24 @@
 # ArcDeploy
 
-
+> **⚠️ WORK IN PROGRESS ⚠️**
+> 
+> **This project is currently under active development and testing. While the native installation approach is our primary focus and has shown good results, we're still refining the deployment process and documentation.**
+> 
+> **Current Status:**
+> - ✅ Native installation approach (primary focus)
+> - 🔄 Testing and validation in progress
+> - 📝 Documentation being refined based on real-world deployments
+> - 🐛 Known issues being addressed
+> 
+> **Use with caution for production deployments.** We recommend thorough testing in a development environment first.
+> 
+> ---
 
 **Universal Cloud-Init Deployment for ArcBlock Blocklet Server**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green.svg)](https://github.com/Pocklabs/ArcDeploy)
+[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/ArcDeploy/issues)
 
 Deploy a production-ready ArcBlock Blocklet Server to any cloud provider in under 10 minutes using cloud-init—simple, secure, and reliable.
 
