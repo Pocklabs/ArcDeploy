@@ -1,0 +1,179 @@
+name: Bug Report
+description: Report a bug or issue with ArcDeploy
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! This template is for the **production ArcDeploy deployment**.
+        
+        If you're working with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "Describe the issue you're experiencing..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment-phase
+    attributes:
+      label: Deployment Phase
+      description: At which phase did the issue occur?
+      options:
+        - "Cloud-init execution"
+        - "Service installation"
+        - "Configuration setup"
+        - "Firewall configuration"
+        - "SSL/TLS setup"
+        - "Service startup"
+        - "Post-deployment verification"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cloud-provider
+    attributes:
+      label: Cloud Provider
+      description: Which cloud provider are you using?
+      options:
+        - "AWS"
+        - "Google Cloud Platform"
+        - "Microsoft Azure"
+        - "DigitalOcean"
+        - "Linode"
+        - "Vultr"
+        - "Hetzner Cloud"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: instance-type
+    attributes:
+      label: Instance Type/Size
+      description: What instance type or size are you using?
+      placeholder: "e.g., t3.micro, e2-micro, Standard_B1s"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Which OS are you deploying to?
+      options:
+        - "Ubuntu 20.04 LTS"
+        - "Ubuntu 22.04 LTS"
+        - "Ubuntu 24.04 LTS"
+        - "Debian 11"
+        - "Debian 12"
+        - "CentOS 7"
+        - "CentOS 8"
+        - "RHEL 8"
+        - "RHEL 9"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "Describe what should have happened..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+      placeholder: "Describe what actually happened..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: Error Messages/Logs
+      description: If applicable, add any error messages or relevant log entries
+      placeholder: "Paste error messages or logs here..."
+      render: shell
+
+  - type: textarea
+    id: cloud-init-config
+    attributes:
+      label: Cloud-init Configuration
+      description: Please share your cloud-init configuration (remove any sensitive data)
+      placeholder: "Paste your cloud-init.yaml content here (sanitized)..."
+      render: yaml
+
+  - type: checkboxes
+    id: troubleshooting-steps
+    attributes:
+      label: Troubleshooting Steps Taken
+      description: Which troubleshooting steps have you already tried?
+      options:
+        - label: "Checked cloud-init logs (/var/log/cloud-init.log)"
+        - label: "Verified instance meets minimum requirements (2GB RAM, 20GB disk)"
+        - label: "Confirmed internet connectivity on instance"
+        - label: "Checked firewall settings"
+        - label: "Reviewed service status (systemctl status)"
+        - label: "Consulted troubleshooting documentation"
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency Level
+      description: How urgent is this issue for your use case?
+      options:
+        - "Low - Nice to have fixed"
+        - "Medium - Affects functionality but workaround exists"
+        - "High - Blocks deployment"
+        - "Critical - Production system down"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, network configuration, etc.)
+      placeholder: "Any additional information that might help..."
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Submission Checklist
+      description: Please confirm before submitting
+      options:
+        - label: "I have searched existing issues to ensure this is not a duplicate"
+          required: true
+        - label: "I have removed all sensitive information from configurations and logs"
+          required: true
+        - label: "I have provided sufficient information for reproduction"
+          required: true
+        - label: "I understand this is for the production ArcDeploy repository"
+          required: true

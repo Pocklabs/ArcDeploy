@@ -1,0 +1,187 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for ArcDeploy
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! This template is for the **production ArcDeploy deployment**.
+        
+        If you're suggesting development tools or testing framework features, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see added.
+      placeholder: "Describe the feature in one or two sentences..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: Which category does this feature belong to?
+      options:
+        - "Deployment Process"
+        - "Cloud Provider Support"
+        - "Security Enhancement"
+        - "Performance Optimization"
+        - "Configuration Management"
+        - "Monitoring & Logging"
+        - "User Experience"
+        - "Documentation"
+        - "Integration"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What use case does it address?
+      placeholder: "Describe the problem or use case this feature would address..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution in detail.
+      placeholder: "How would you like this feature to work? What would the user experience be?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives Considered
+      description: What alternative solutions or workarounds have you considered?
+      placeholder: "Describe any alternative approaches you've thought about..."
+
+  - type: dropdown
+    id: cloud-providers
+    attributes:
+      label: Cloud Provider Scope
+      description: Which cloud providers should this feature support?
+      multiple: true
+      options:
+        - "AWS"
+        - "Google Cloud Platform"
+        - "Microsoft Azure"
+        - "DigitalOcean"
+        - "Linode"
+        - "Vultr"
+        - "Hetzner Cloud"
+        - "All Cloud Providers"
+        - "Cloud Agnostic"
+
+  - type: dropdown
+    id: user-type
+    attributes:
+      label: Target User Type
+      description: Which type of users would benefit from this feature?
+      multiple: true
+      options:
+        - "Individual Developers"
+        - "Small Teams"
+        - "Enterprise Users"
+        - "System Administrators"
+        - "DevOps Engineers"
+        - "All Users"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - "Low - Nice to have"
+        - "Medium - Would improve workflow"
+        - "High - Significant impact on usability"
+        - "Critical - Blocking adoption"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case-examples
+    attributes:
+      label: Use Case Examples
+      description: Provide specific examples of how this feature would be used.
+      placeholder: |
+        Example 1: [Describe a specific scenario]
+        Example 2: [Describe another scenario]
+        Example 3: [Additional scenario if applicable]
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: Any technical aspects, requirements, or constraints to consider?
+      placeholder: "Are there any technical requirements, dependencies, or limitations to consider?"
+
+  - type: checkboxes
+    id: compatibility-requirements
+    attributes:
+      label: Compatibility Requirements
+      description: What compatibility requirements should this feature maintain?
+      options:
+        - label: "Backward compatibility with existing deployments"
+        - label: "Cross-platform compatibility (Linux distributions)"
+        - label: "Multi-cloud provider support"
+        - label: "Minimal resource overhead"
+        - label: "Security compliance maintained"
+
+  - type: dropdown
+    id: implementation-timeline
+    attributes:
+      label: Desired Implementation Timeline
+      description: When would you ideally like to see this feature implemented?
+      options:
+        - "No specific timeline"
+        - "Next minor release"
+        - "Next major release"
+        - "Within 3 months"
+        - "Within 6 months"
+        - "Within 1 year"
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, screenshots, or references that might help.
+      placeholder: "Any additional information, links, or visual aids that might help..."
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution Interest
+      description: Would you be interested in contributing to this feature?
+      options:
+        - label: "I would be willing to help implement this feature"
+        - label: "I would be willing to test this feature"
+        - label: "I would be willing to help with documentation"
+        - label: "I would be willing to provide feedback during development"
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Submission Checklist
+      description: Please confirm before submitting
+      options:
+        - label: "I have searched existing issues to ensure this is not a duplicate"
+          required: true
+        - label: "I have provided sufficient detail for the development team to understand the request"
+          required: true
+        - label: "I understand this feature request is for the production ArcDeploy repository"
+          required: true
+        - label: "I have considered the impact on existing users and deployments"
+          required: true

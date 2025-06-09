@@ -1,0 +1,217 @@
+name: Support/Help Request
+description: Get help with ArcDeploy deployment or configuration
+title: "[SUPPORT] "
+labels: ["support", "question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help with ArcDeploy? We're here to assist! This template is for the **production ArcDeploy deployment**.
+        
+        If you need help with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+        
+        **Before submitting a support request, please:**
+        - Check the [troubleshooting documentation](docs/troubleshooting.md)
+        - Search existing issues for similar problems
+        - Verify your system meets the minimum requirements
+
+  - type: dropdown
+    id: support-category
+    attributes:
+      label: Support Category
+      description: What type of help do you need?
+      options:
+        - "Pre-deployment Planning"
+        - "Deployment Issues"
+        - "Configuration Questions"
+        - "Performance Issues"
+        - "Security Configuration"
+        - "Cloud Provider Specific"
+        - "Post-deployment Setup"
+        - "Integration Questions"
+        - "Best Practices"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question-summary
+    attributes:
+      label: Question/Issue Summary
+      description: Briefly describe what you need help with
+      placeholder: "Summarize your question or the help you need..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: experience-level
+    attributes:
+      label: Experience Level
+      description: What's your experience level with cloud deployment?
+      options:
+        - "Beginner - New to cloud platforms"
+        - "Intermediate - Some cloud experience"
+        - "Advanced - Experienced with infrastructure"
+        - "Expert - DevOps/SysAdmin professional"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment-stage
+    attributes:
+      label: Deployment Stage
+      description: At what stage are you experiencing issues or have questions?
+      options:
+        - "Planning/Pre-deployment"
+        - "Initial setup/Cloud provider configuration"
+        - "Cloud-init execution"
+        - "Service installation"
+        - "Configuration"
+        - "First run/Testing"
+        - "Production usage"
+        - "Maintenance/Updates"
+        - "Not applicable"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cloud-provider
+    attributes:
+      label: Cloud Provider
+      description: Which cloud provider are you using or planning to use?
+      options:
+        - "AWS"
+        - "Google Cloud Platform"
+        - "Microsoft Azure"
+        - "DigitalOcean"
+        - "Linode"
+        - "Vultr"
+        - "Hetzner Cloud"
+        - "Multiple providers"
+        - "Haven't decided yet"
+        - "Other"
+
+  - type: textarea
+    id: detailed-description
+    attributes:
+      label: Detailed Description
+      description: Provide a detailed description of your question or issue
+      placeholder: |
+        Please provide as much detail as possible:
+        - What are you trying to achieve?
+        - What steps have you taken so far?
+        - What specific challenges are you facing?
+        - What outcome are you expecting?
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-configuration
+    attributes:
+      label: Current Configuration
+      description: Share your current configuration (remove sensitive information)
+      placeholder: "Paste your cloud-init.yaml or relevant configuration here (sanitized)..."
+      render: yaml
+
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: Error Messages/Logs
+      description: If you're experiencing errors, please share relevant error messages or logs
+      placeholder: "Paste any error messages or relevant log entries here..."
+      render: shell
+
+  - type: checkboxes
+    id: troubleshooting-attempted
+    attributes:
+      label: Troubleshooting Steps Attempted
+      description: Which troubleshooting steps have you already tried?
+      options:
+        - label: "Reviewed the README and documentation"
+        - label: "Checked system requirements"
+        - label: "Verified cloud provider configuration"
+        - label: "Checked cloud-init logs"
+        - label: "Tested network connectivity"
+        - label: "Reviewed firewall settings"
+        - label: "Consulted troubleshooting guide"
+        - label: "Searched existing issues"
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency Level
+      description: How urgent is this support request?
+      options:
+        - "Low - Learning/Planning"
+        - "Medium - Development blocked"
+        - "High - Production issue"
+        - "Critical - System down"
+    validations:
+      required: true
+
+  - type: textarea
+    id: system-information
+    attributes:
+      label: System Information
+      description: Provide relevant system information
+      placeholder: |
+        - Operating System: (e.g., Ubuntu 22.04 LTS)
+        - Instance Type: (e.g., t3.micro, 2GB RAM, 20GB disk)
+        - Network configuration: (e.g., VPC, security groups)
+        - Any custom modifications made
+      render: text
+
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What outcome are you hoping to achieve?
+      placeholder: "Describe what you're trying to accomplish or what you expect to happen..."
+
+  - type: dropdown
+    id: timeline
+    attributes:
+      label: Timeline
+      description: What's your timeline for resolving this?
+      options:
+        - "No specific timeline"
+        - "Within a few days"
+        - "Within a week"
+        - "ASAP - blocking progress"
+        - "For future reference"
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional information that might be helpful
+      placeholder: "Screenshots, network diagrams, specific use case details, etc."
+
+  - type: checkboxes
+    id: support-preferences
+    attributes:
+      label: Support Preferences
+      description: How would you prefer to receive help?
+      options:
+        - label: "Detailed written response in this issue"
+        - label: "Links to relevant documentation"
+        - label: "Step-by-step troubleshooting guide"
+        - label: "Example configurations"
+        - label: "Community discussion"
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Submission Checklist
+      description: Please confirm before submitting
+      options:
+        - label: "I have searched existing issues for similar questions"
+          required: true
+        - label: "I have removed all sensitive information (passwords, keys, etc.)"
+          required: true
+        - label: "I have provided sufficient detail for someone to help me"
+          required: true
+        - label: "I understand this is for production ArcDeploy support"
+          required: true
