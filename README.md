@@ -1,25 +1,14 @@
 # ArcDeploy
 
-> **⚠️ WORK IN PROGRESS ⚠️**
-> 
-> **This project is currently under active development and testing. While the native installation approach is our primary focus and has shown good results, we're still refining the deployment process and documentation.**
-> 
-> **Current Status:**
-> - ✅ Native installation approach (primary focus)
-> - 🔄 Testing and validation in progress
-> - 📝 Documentation being refined based on real-world deployments
-> - 🐛 Known issues being addressed
-> 
-> **Use with caution for production deployments.** We recommend thorough testing in a development environment first.
-> 
-> ---
 
-**One-Click Arcblock Blocklet Server Deployment for Any Cloud Provider**
+
+**Universal Cloud-Init Deployment for ArcBlock Blocklet Server**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud-Init](https://img.shields.io/badge/Cloud--Init-Compatible-blue.svg)](https://cloud-init.io/)
-[![Hetzner Cloud](https://img.shields.io/badge/Hetzner-Cloud-red.svg)](https://www.hetzner.com/cloud)
-[![Work In Progress](https://img.shields.io/badge/Status-Work%20In%20Progress-orange.svg)](https://github.com/Pocklabs/ArcDeploy/issues)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green.svg)](https://github.com/Pocklabs/ArcDeploy)
+
+Deploy a production-ready ArcBlock Blocklet Server to any cloud provider in under 10 minutes using cloud-init—simple, secure, and reliable.
 
 ## 🚀 Quick Start
 
@@ -46,93 +35,62 @@ sed -i 's/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519Publi
 
 ## ✨ Features
 
-### 🔒 **Security-First Design**
-- SSH key-only authentication (passwords disabled)
-- Custom SSH port (2222) to reduce attack surface
-- UFW firewall with minimal required ports
-- Fail2ban intrusion prevention system
-- Non-root user execution
-- Automatic security updates
+- **🔒 Security-First**: SSH key authentication, custom ports, and firewall protection
+- **⚡ High Performance**: Native installation without container overhead
+- **🌐 Universal**: Works with any cloud provider that supports cloud-init
+- **🛠️ Production Ready**: Auto-monitoring, SSL support, and service integration
+- **📦 Zero Dependencies**: Single cloud-init file deployment
 
-### ⚡ **Native Installation**
-- Direct Node.js and npm installation (no containers)
-- Maximum performance with zero container overhead
-- Nginx reverse proxy for web access
-- Automatic SSL/TLS certificate support
-- Clean system service integration
+## 📋 Requirements
 
-### 🛠️ **Production Ready**
-- Automated health monitoring
-- System service integration with systemd
-- Comprehensive logging
-- Resource optimization
-- Auto-restart on failure
+### Server Specifications
 
-## 📁 Project Structure
+- **Minimum**: 4 vCPUs, 8GB RAM, 80GB SSD
+- **Recommended**: 8 vCPUs, 16GB RAM, 160GB SSD
+- **OS**: Ubuntu 22.04 LTS (x86_64)
 
-```
-ArcDeploy/
-├── cloud-init.yaml           # Single cloud-init configuration
-├── scripts/                  # Utility scripts
-├── docs/                     # Documentation
-├── QUICK_START.md           # Quick deployment guide
-└── README.md                # This file
-```
+### Network Ports
 
-## 🎯 Deployment Guide
+- **2222**: SSH access
+- **8080**: HTTP web interface
+- **8443**: HTTPS web interface
 
-### Prerequisites
-- Hetzner Cloud account
-- SSH key pair (ED25519 recommended)
-- Basic knowledge of cloud-init
+## 🎯 Deployment Steps
 
 ### Step 1: Prepare SSH Key
 
-```bash
-# Generate new SSH key
-ssh-keygen -t ed25519 -C "your-email@example.com"
+Generate an SSH key pair if you don't have one:
 
-# Display public key
+```bash
+ssh-keygen -t ed25519 -C "your-email@example.com"
 cat ~/.ssh/id_ed25519.pub
 ```
 
 ### Step 2: Configure cloud-init.yaml
 
-Replace the SSH key placeholder:
+Edit the `cloud-init.yaml` file and replace the SSH key placeholder with your actual public key:
 
 ```yaml
 ssh_authorized_keys:
-  - YOUR_ACTUAL_SSH_PUBLIC_KEY_HERE
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIYourActualPublicKeyHere your-email@example.com
 ```
 
-### Step 3: Deploy to Hetzner Cloud
+### Step 3: Deploy to Cloud Provider
 
-#### Via Hetzner Console:
-1. Create new server (CX31+ recommended, x86 architecture)
+Deploy to Hetzner Cloud using their interface:
+
+#### Hetzner Cloud
+
+1. Create new server (CX31 or higher)
 2. Select Ubuntu 22.04 LTS
 3. Paste `cloud-init.yaml` content in "Cloud config" section
-4. Add server to project and create
+4. Create server
 
-#### Via Hetzner API:
-```bash
-export HETZNER_API_TOKEN="your-token-here"
-
-curl -X POST \
-  -H "Authorization: Bearer $HETZNER_API_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "image": "ubuntu-22.04",
-    "location": "nbg1",
-    "name": "blocklet-server",
-    "server_type": "cx31",
-    "user_data": "'"$(cat cloud-init.yaml)"'"
-  }' \
-  https://api.hetzner.cloud/v1/servers
-```
+> **Note**: While ArcDeploy works with any cloud provider that supports cloud-init, we recommend Hetzner Cloud for its simplicity, reliability, and cost-effectiveness.
 
 ### Step 4: Access Your Server
 
-Wait 5-10 minutes for installation to complete, then:
+Wait 5-10 minutes for installation to complete, then access your server:
 
 ```bash
 # SSH access
@@ -140,50 +98,36 @@ ssh -p 2222 arcblock@YOUR_SERVER_IP
 
 # Web interface
 open http://YOUR_SERVER_IP:8080
+
+# Admin panel
+open http://YOUR_SERVER_IP:8080/.well-known/server/admin/
 ```
 
-## 🔥 Network Configuration
-
-### Required Ports
-| Port | Service | Description |
-|------|---------|-------------|
-| 2222 | SSH | Secure shell access |
-| 8080 | HTTP | Blocklet Server web interface |
-| 8443 | HTTPS | Blocklet Server secure web interface |
-
-### Firewall Setup
-The deployment automatically configures UFW firewall. For Hetzner Cloud Firewall:
-
-```bash
-# Allow SSH
-- Source: 0.0.0.0/0, Port: 2222, Protocol: TCP
-
-# Allow HTTP/HTTPS
-- Source: 0.0.0.0/0, Port: 8080, Protocol: TCP
-- Source: 0.0.0.0/0, Port: 8443, Protocol: TCP
-```
-
-## 📊 Post-Deployment
+## 🔧 Post-Deployment
 
 ### Verify Installation
 
 ```bash
-# Check cloud-init status
+# Check deployment status
+ssh -p 2222 arcblock@YOUR_SERVER_IP
 sudo cloud-init status --long
-
-# Check Blocklet Server service
 sudo systemctl status blocklet-server
-
-# Test web interface
-curl -I http://localhost:8080
 ```
 
-### Access Blocklet Server
+### Initial Setup
 
-Your Blocklet Server will be available at:
-- **HTTP:** `http://YOUR_SERVER_IP:8080`
-- **HTTPS:** `https://YOUR_SERVER_IP:8443` (if SSL configured)
-- **Admin Panel:** `http://YOUR_SERVER_IP:8080/.well-known/server/admin/`
+1. **Access Admin Panel**: Visit `http://YOUR_SERVER_IP:8080/.well-known/server/admin/`
+2. **Complete Setup Wizard**: Follow the on-screen instructions
+3. **Configure SSL** (optional): Set up Let's Encrypt certificates
+4. **Install Blocklets**: Browse and install your desired blocklets
+
+## 🛡️ Security Features
+
+- **SSH Hardening**: Key-only authentication on port 2222
+- **Firewall Protection**: UFW configured with minimal attack surface
+- **Intrusion Prevention**: Fail2ban monitoring and blocking
+- **Automatic Updates**: Security patches applied automatically
+- **Process Isolation**: Services run as non-root user
 
 ## 🔧 Troubleshooting
 
@@ -228,74 +172,72 @@ ps aux | grep -E "(blocklet|node)"
 netstat -tlnp | grep -E "(8080|8443|2222)"
 ```
 
-## ⚙️ Server Requirements
+## 🆘 Troubleshooting
 
-### Minimum Hardware Requirements
-- **CPU:** 4 cores / 4 vCPUs
-- **RAM:** 8GB
-- **Storage:** 80GB SSD
-- **Network:** 1Gbps connection
-- **Bandwidth:** Unlimited or generous allowance
+### Common Issues
 
-### Recommended Hardware Requirements
-- **CPU:** 8 cores / 8 vCPUs
-- **RAM:** 16GB
-- **Storage:** 160GB SSD
-- **Network:** 1Gbps+ connection
-- **Bandwidth:** Unlimited
+**Can't connect via SSH:**
 
-### System Requirements
-- **Operating System:** Ubuntu 22.04 LTS
-- **Architecture:** x86_64 (ARM not currently supported)
-- **Cloud-Init:** Required for automated deployment
-- **Internet Access:** Required for package installation
-- **SSH Access:** Required for management
+```bash
+# Check if port 2222 is open
+telnet YOUR_SERVER_IP 2222
 
-## 🛡️ Security Features
+# Verify SSH key is correct
+ssh -p 2222 -v arcblock@YOUR_SERVER_IP
+```
 
-- **SSH Hardening:** Key-only auth, custom port, failed login protection
-- **Firewall:** UFW configured with minimal attack surface
-- **Intrusion Prevention:** Fail2ban monitoring SSH and web services
-- **System Updates:** Automatic security updates enabled
-- **Process Isolation:** Non-root execution for all services
-- **Log Monitoring:** Comprehensive logging for security analysis
+**Blocklet Server not responding:**
 
-## 📚 Additional Documentation
+```bash
+# Check service status
+ssh -p 2222 arcblock@YOUR_SERVER_IP
+sudo systemctl status blocklet-server
+sudo journalctl -u blocklet-server -f
+```
 
-- **[Quick Start Guide](QUICK_START.md)** - Streamlined deployment instructions
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Security Guide](docs/SECURITY.md)** - Security best practices and configuration
+**Cloud-init failed:**
+
+```bash
+# Check cloud-init logs
+sudo tail -f /var/log/cloud-init-output.log
+sudo cloud-init status --long
+```
+
+## 📚 Documentation
+
+- **[Quick Start Guide](docs/quick-start.md)** - Streamlined deployment
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+
+## 🔗 Development Tools
+
+For advanced users, developers, and contributors, comprehensive development tools are available in the **[ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev)** repository:
+
+- **Testing Framework**: Comprehensive test suites with 100+ scenarios
+- **Debug Tools**: Advanced debugging and diagnostic utilities
+- **Failure Injection**: Resilience testing with 31 failure scenarios
+- **Performance Benchmarking**: System performance analysis tools
+- **Mock Infrastructure**: Development and testing environments
+
+## 🌍 Other Cloud Providers
+
+While this documentation focuses on Hetzner Cloud, ArcDeploy works with any cloud provider that supports cloud-init. For other providers, simply paste the `cloud-init.yaml` content in your provider's user data or cloud config section during server creation.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please:
+We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.md).
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-### Development
-
-```bash
-# Validate YAML syntax
-yamllint cloud-init.yaml
-
-# Test locally (requires appropriate setup)
-sudo cloud-init schema --config-file cloud-init.yaml
-```
+For development-related contributions, please use the **[ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev)** repository.
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 💬 Support
 
-- **Issues:** [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
-- **Documentation:** [Project Wiki](https://github.com/Pocklabs/ArcDeploy/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
+- **Documentation**: [Project Documentation](docs/)
 
 ---
 
-**Deploy smarter, scale faster.** 🚀
+**Deploy with confidence. Scale with ease.** 🚀
