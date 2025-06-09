@@ -246,4 +246,4 @@ sudo journalctl -u cloud-init-local -u cloud-init -u cloud-config -u cloud-final
 
 **🎯 Total deployment time: 10 minutes or less!**
 
-**Next**: Visit the [troubleshooting guide](troubleshooting.md) for additional help and solutions.
+**Next**: Visit the [troubleshooting guide](TROUBLESHOOTING.md) for additional help and solutions.

@@ -23,7 +23,7 @@ We take security seriously and appreciate the security research community's effo
 Instead, use one of these secure methods:
 
 #### GitHub Security Advisories (Preferred)
-1. Go to the [Security tab](https://github.com/your-org/ArcDeploy/security/advisories)
+1. Go to the [Security tab](https://github.com/Pocklabs/ArcDeploy/security/advisories)
 2. Click "Report a vulnerability"
 3. Fill out the security advisory form
 4. Submit privately to maintainers
@@ -225,9 +225,9 @@ write_files:
 ## 🔗 Security Resources
 
 ### Documentation
-- [Troubleshooting Guide](docs/troubleshooting.md) - Security troubleshooting
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Security troubleshooting
 - [Cloud Provider Security Guides](docs/) - Provider-specific security
-- [ArcDeploy-Dev Security Tools](https://github.com/your-org/ArcDeploy-Dev) - Advanced security tools
+- [ArcDeploy-Dev Security Tools](https://github.com/Pocklabs/ArcDeploy-Dev) - Advanced security tools
 
 ### External Resources
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)

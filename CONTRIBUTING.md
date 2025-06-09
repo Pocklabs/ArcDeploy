@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to ArcDeploy! This document provides guidelines for contributing to the **production ArcDeploy repository**.
 
-> **Note**: If you're interested in contributing to development tools, testing frameworks, or advanced features, please see the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+> **Note**: If you're interested in contributing to development tools, testing frameworks, or advanced features, please see the [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev) instead.
 
 ## 🎯 Repository Purpose
 
@@ -29,9 +29,9 @@ This repository contains the **production-ready** ArcDeploy deployment system op
 
 #### ❌ Not for This Repository
 
-- Development tools and testing frameworks → Use [ArcDeploy-Dev](https://github.com/your-org/ArcDeploy-Dev)
-- Experimental features → Use [ArcDeploy-Dev](https://github.com/your-org/ArcDeploy-Dev)
-- Debug tools and diagnostic scripts → Use [ArcDeploy-Dev](https://github.com/your-org/ArcDeploy-Dev)
+- Development tools and testing frameworks → Use [ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev)
+- Experimental features → Use [ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev)
+- Debug tools and diagnostic scripts → Use [ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev)
 
 ## 🚀 Getting Started
 
@@ -53,7 +53,7 @@ This repository contains the **production-ready** ArcDeploy deployment system op
 
 2. **Set up upstream remote**
    ```bash
-   git remote add upstream https://github.com/your-org/ArcDeploy.git
+   git remote add upstream https://github.com/Pocklabs/ArcDeploy.git
    ```
 
 3. **Create a feature branch**
@@ -254,10 +254,10 @@ Configure AWS and deploy.
 
 ### Where to Get Help
 
-- **General questions**: [GitHub Discussions](https://github.com/your-org/ArcDeploy/discussions)
-- **Development help**: [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev)
-- **Bug reports**: [GitHub Issues](https://github.com/your-org/ArcDeploy/issues)
-- **Security issues**: [Security Advisories](https://github.com/your-org/ArcDeploy/security)
+- **General questions**: [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
+- **Development help**: [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev)
+- **Bug reports**: [GitHub Issues](https://github.com/Pocklabs/ArcDeploy/issues)
+- **Security issues**: [Security Advisories](https://github.com/Pocklabs/ArcDeploy/security)
 
 ### Response Times
 
@@ -341,6 +341,6 @@ ArcDeploy/
 
 - **Project Lead**: [Maintainer Name](mailto:maintainer@example.com)
 - **Security Contact**: [security@example.com](mailto:security@example.com)
-- **Community**: [GitHub Discussions](https://github.com/your-org/ArcDeploy/discussions)
+- **Community**: [GitHub Discussions](https://github.com/Pocklabs/ArcDeploy/discussions)
 
 **Happy Contributing!** 🚀

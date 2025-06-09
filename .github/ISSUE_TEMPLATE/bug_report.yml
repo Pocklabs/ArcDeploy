@@ -10,7 +10,7 @@ body:
       value: |
         Thanks for taking the time to fill out this bug report! This template is for the **production ArcDeploy deployment**.
         
-        If you're working with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+        If you're working with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev) instead.
 
   - type: textarea
     id: description

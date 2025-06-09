@@ -10,7 +10,7 @@ body:
       value: |
         Thanks for helping improve our documentation! This template is for the **production ArcDeploy documentation**.
         
-        If you're suggesting improvements to development documentation or testing guides, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+        If you're suggesting improvements to development documentation or testing guides, please use the [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev) instead.
 
   - type: dropdown
     id: issue-type

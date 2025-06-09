@@ -83,3 +83,46 @@ logs/
 
 # Debug log files
 Log.md
+
+# Development and Debug Tools (for ArcDeploy-Dev repo)
+**/debug*.sh
+**/test_*.sh
+**/*_SUMMARY.md
+**/*_UPDATE*.md
+
+# Development documentation patterns
+**/DEBUGGING_*.md
+**/IMPLEMENTATION_*.md
+**/DEV_*.md
+
+# Development directories
+dev-scripts/
+debug-tools/
+testing-tools/
+
+# Performance testing files
+benchmark_*.log
+performance_*.json
+load_test_*.txt
+
+# Temporary development files
+*.draft
+*.temp.md
+*.dev.md
+local_notes.md
+dev_notes.txt
+
+# Build artifacts
+build_logs/
+deployment_logs/
+test_results/
+coverage_reports/
+
+# Local development configs
+.dev.env
+dev-config.yaml
+local-settings.*
+
+# Reports folder
+Reports/
+

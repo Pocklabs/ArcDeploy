@@ -9,10 +9,9 @@ This comprehensive guide covers debugging and troubleshooting common issues with
 Run our automated diagnostic script to quickly assess your deployment:
 
 ```bash
-# Download and run diagnostic script
-curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh -o /tmp/debug_commands.sh
-chmod +x /tmp/debug_commands.sh
-/tmp/debug_commands.sh
+# Run built-in validation script
+sudo -u arcblock /opt/abtnode/bin/abtnode logs
+sudo -u arcblock /opt/abtnode/bin/abtnode status
 ```
 
 ### Manual Quick Checks
@@ -745,14 +744,14 @@ sudo systemctl is-active blocklet-server nginx redis-server ssh && echo "All ser
 ## Getting Help
 
 ### Documentation Resources
-- [Implementation Details](IMPLEMENTATION_DETAILS.md)
-- [Debugging Guide](DEBUGGING_GUIDE.md)
 - [Firewall Ports Guide](FIREWALL_PORTS_GUIDE.md)
+- [Security Assessment](SECURITY_ASSESSMENT.md)
+- [Quick Start Guide](../QUICK_START.md)
 
-### Automated Tools
-- **Debug Script**: `scripts/debug_commands.sh` - 30+ diagnostic checks
+### Available Tools
 - **Validation Script**: `scripts/validate-setup.sh` - Complete deployment validation
 - **Recovery Script**: `scripts/manual_recovery.sh` - Full system recovery
+- **Development Tools**: Available in [ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev) repository
 
 ### Support Channels
 - **GitHub Issues**: [ArcDeploy Issues](https://github.com/Pocklabs/ArcDeploy/issues)

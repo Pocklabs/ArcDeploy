@@ -10,10 +10,10 @@ body:
       value: |
         Need help with ArcDeploy? We're here to assist! This template is for the **production ArcDeploy deployment**.
         
-        If you need help with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+        If you need help with development tools or testing frameworks, please use the [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev) instead.
         
         **Before submitting a support request, please:**
-        - Check the [troubleshooting documentation](docs/troubleshooting.md)
+        - Check the [troubleshooting documentation](docs/TROUBLESHOOTING.md)
         - Search existing issues for similar problems
         - Verify your system meets the minimum requirements
 

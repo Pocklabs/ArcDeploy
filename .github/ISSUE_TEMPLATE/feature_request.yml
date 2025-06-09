@@ -10,7 +10,7 @@ body:
       value: |
         Thanks for suggesting a new feature! This template is for the **production ArcDeploy deployment**.
         
-        If you're suggesting development tools or testing framework features, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+        If you're suggesting development tools or testing framework features, please use the [ArcDeploy-Dev repository](https://github.com/Pocklabs/ArcDeploy-Dev) instead.
 
   - type: textarea
     id: feature-summary
