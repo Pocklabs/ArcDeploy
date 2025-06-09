@@ -1,0 +1,186 @@
+name: Documentation Improvement
+description: Report an issue with documentation or suggest documentation improvements
+title: "[DOCS] "
+labels: ["documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! This template is for the **production ArcDeploy documentation**.
+        
+        If you're suggesting improvements to development documentation or testing guides, please use the [ArcDeploy-Dev repository](https://github.com/your-org/ArcDeploy-Dev) instead.
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Documentation Issue Type
+      description: What type of documentation issue is this?
+      options:
+        - "Missing Information"
+        - "Incorrect/Outdated Information"
+        - "Unclear Instructions"
+        - "Broken Links"
+        - "Typos/Grammar"
+        - "Structure/Organization"
+        - "Missing Examples"
+        - "Accessibility Issue"
+        - "New Documentation Request"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: affected-page
+    attributes:
+      label: Affected Documentation
+      description: Which documentation page or section is affected?
+      placeholder: "e.g., README.md, docs/troubleshooting.md, line 45"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content (if applicable)
+      description: Copy the current content that needs improvement
+      placeholder: "Paste the current text that needs to be fixed or improved..."
+      render: markdown
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue in detail
+      placeholder: "What's wrong with the current documentation? What's missing? What's unclear?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: "Describe your suggested changes, corrections, or additions..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-level
+    attributes:
+      label: Target User Level
+      description: Which user level is most affected by this documentation issue?
+      options:
+        - "Beginner - New to cloud deployment"
+        - "Intermediate - Some cloud experience"
+        - "Advanced - Experienced with infrastructure"
+        - "Expert - System administrators/DevOps"
+        - "All Users"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: documentation-section
+    attributes:
+      label: Documentation Section
+      description: Which section of documentation is affected?
+      options:
+        - "README/Quick Start"
+        - "Installation Guide"
+        - "Configuration Reference"
+        - "Troubleshooting"
+        - "Security Guidelines"
+        - "FAQ"
+        - "Examples"
+        - "API Reference"
+        - "Cloud Provider Specific"
+        - "Other"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: impact-areas
+    attributes:
+      label: Impact Areas
+      description: Which areas does this documentation issue affect?
+      options:
+        - label: "User onboarding experience"
+        - label: "Deployment success rate"
+        - label: "Troubleshooting effectiveness"
+        - label: "Security implementation"
+        - label: "Performance optimization"
+        - label: "Community adoption"
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency Level
+      description: How urgent is this documentation fix?
+      options:
+        - "Low - Minor improvement"
+        - "Medium - Affects user experience"
+        - "High - Causes confusion or errors"
+        - "Critical - Blocks successful deployment"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-impact
+    attributes:
+      label: User Impact
+      description: How does this documentation issue affect users?
+      placeholder: "Describe how this issue impacts users trying to deploy ArcDeploy..."
+
+  - type: textarea
+    id: proposed-content
+    attributes:
+      label: Proposed Content (if applicable)
+      description: If you have specific content suggestions, provide them here
+      placeholder: "Provide your suggested documentation content..."
+      render: markdown
+
+  - type: checkboxes
+    id: verification-method
+    attributes:
+      label: Verification Method
+      description: How should the improved documentation be verified?
+      options:
+        - label: "Test with fresh deployment"
+        - label: "Review by technical writer"
+        - label: "Community feedback"
+        - label: "Accessibility testing"
+        - label: "Cross-platform testing"
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional context, screenshots, or examples
+      placeholder: "Screenshots, links to similar documentation, or other helpful context..."
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution Interest
+      description: Would you be interested in contributing to this documentation improvement?
+      options:
+        - label: "I would be willing to help write the improved documentation"
+        - label: "I would be willing to review proposed changes"
+        - label: "I would be willing to test the improved documentation"
+        - label: "I can provide subject matter expertise"
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Submission Checklist
+      description: Please confirm before submitting
+      options:
+        - label: "I have searched existing issues to ensure this is not a duplicate"
+          required: true
+        - label: "I have provided specific location information for the documentation issue"
+          required: true
+        - label: "I understand this is for production ArcDeploy documentation"
+          required: true
+        - label: "I have considered the impact on different user skill levels"
+          required: true

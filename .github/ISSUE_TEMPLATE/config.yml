@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🚀 ArcDeploy Development Repository
+    url: https://github.com/your-org/ArcDeploy-Dev
+    about: For development tools, testing framework issues, and contributor discussions
+  - name: 📚 Documentation & Troubleshooting
+    url: https://github.com/your-org/ArcDeploy/blob/main/docs/troubleshooting.md
+    about: Check our comprehensive troubleshooting guide before submitting support requests
+  - name: 💬 Community Discussions
+    url: https://github.com/your-org/ArcDeploy/discussions
+    about: Join community discussions, share experiences, and ask general questions
+  - name: 🔒 Security Issues
+    url: https://github.com/your-org/ArcDeploy/security/advisories/new
+    about: Report security vulnerabilities privately through GitHub Security Advisories
+  - name: 📖 Project Documentation
+    url: https://github.com/your-org/ArcDeploy-Project
+    about: Complete project documentation, development history, and phase reports
