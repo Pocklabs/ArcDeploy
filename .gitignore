@@ -126,6 +126,6 @@ local-settings.*
 # Reports folder
 Reports/
 
-# dev-deployment folder (v5.0.0 development)
+# dev-deployment folder
 dev-deployment/
 

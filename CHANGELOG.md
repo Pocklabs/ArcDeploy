@@ -2,6 +2,25 @@
 
 All notable changes to the ArcDeploy project are documented in this file.
 
+## [4.0.8] - 2025-06-09
+
+### 🔧 Production Scripts and Repository Organization
+
+#### Script Management
+- **RESTORED**: `scripts/debug_commands.sh` - Production debugging tool with 30+ diagnostic checks
+- **MAINTAINED**: All production scripts now properly tracked and available
+- **ORGANIZED**: Clear separation between production tools and development content
+
+#### Repository Configuration
+- **UPDATED**: .gitignore patterns for better repository organization
+- **CLEANED**: Removed version-specific references from configuration comments
+- **STREAMLINED**: Repository structure for production deployment focus
+
+#### Documentation Consistency
+- **VERIFIED**: All script references in documentation are accurate
+- **MAINTAINED**: Clean commit history with logical grouping of related changes
+- **ENSURED**: Production-ready repository state with proper tool availability
+
 ## [4.0.7] - 2025-06-09
 
 ### 🧹 Final Repository Cleanup and Quality Assurance

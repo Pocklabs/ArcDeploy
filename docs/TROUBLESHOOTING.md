@@ -6,12 +6,13 @@ This comprehensive guide covers debugging and troubleshooting common issues with
 
 ### Automated Diagnostic Script
 
-Run our automated diagnostic script to quickly assess your deployment:
+Run our comprehensive diagnostic script to quickly assess your deployment:
 
 ```bash
-# Run built-in validation script
-sudo -u arcblock /opt/abtnode/bin/abtnode logs
-sudo -u arcblock /opt/abtnode/bin/abtnode status
+# Download and run diagnostic script
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh -o /tmp/debug_commands.sh
+chmod +x /tmp/debug_commands.sh
+/tmp/debug_commands.sh
 ```
 
 ### Manual Quick Checks
@@ -590,9 +591,9 @@ sudo ufw --force enable
 
 ```bash
 # Download and run comprehensive diagnostic
-curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/validate-setup.sh -o /tmp/validate-setup.sh
-chmod +x /tmp/validate-setup.sh
-/tmp/validate-setup.sh
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh -o /tmp/debug_commands.sh
+chmod +x /tmp/debug_commands.sh
+/tmp/debug_commands.sh
 ```
 
 ### Manual Diagnostic Collection
@@ -749,6 +750,7 @@ sudo systemctl is-active blocklet-server nginx redis-server ssh && echo "All ser
 - [Quick Start Guide](../QUICK_START.md)
 
 ### Available Tools
+- **Debug Script**: `scripts/debug_commands.sh` - 30+ comprehensive diagnostic checks
 - **Validation Script**: `scripts/validate-setup.sh` - Complete deployment validation
 - **Recovery Script**: `scripts/manual_recovery.sh` - Full system recovery
 - **Development Tools**: Available in [ArcDeploy-Dev](https://github.com/Pocklabs/ArcDeploy-Dev) repository

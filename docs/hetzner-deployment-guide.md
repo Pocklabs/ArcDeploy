@@ -325,8 +325,8 @@ sudo cloud-init init
 sudo -u arcblock /opt/abtnode/bin/abtnode status
 sudo -u arcblock /opt/abtnode/bin/abtnode logs
 
-# Run validation script
-./scripts/validate-setup.sh
+# Run comprehensive debug script
+curl -fsSL https://raw.githubusercontent.com/Pocklabs/ArcDeploy/main/scripts/debug_commands.sh | bash
 ```
 
 #### Support Resources
