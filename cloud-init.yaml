@@ -1,5 +1,14 @@
 #cloud-config
+# ArcDeploy - Comprehensive Blocklet Server Cloud-Init Configuration
+# Production-Ready Version 2.0 with Security Hardening & Operational Excellence
+# Last Updated: 2025-06-12
 
+# System configuration
+timezone: UTC
+hostname: blocklet-server
+package_reboot_if_required: false
+
+# User configuration
 users:
   - name: arcblock
     groups: users, admin, sudo
@@ -8,6 +17,7 @@ users:
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com
 
+# Package installation
 packages:
   - curl
   - wget
@@ -29,24 +39,27 @@ packages:
   - python3-pip
   - nginx
   - sqlite3
-  - redis-server
+  - bc
 
 package_update: true
 package_upgrade: true
 
+# File system configuration
 write_files:
+  # Enhanced Blocklet Server systemd service with resource limits
   - path: /etc/systemd/system/blocklet-server.service
+    owner: root:root
+    permissions: "0644"
     content: |
       [Unit]
       Description=Arcblock Blocklet Server
-      After=network-online.target redis.service
+      After=network-online.target
       Wants=network-online.target
-      Requires=redis.service
 
       [Service]
       Type=simple
-      User=arcblock
-      Group=arcblock
+      User=blockletd
+      Group=blockletd
       WorkingDirectory=/opt/blocklet-server
       Environment=NODE_ENV=production
       Environment=BLOCKLET_LOG_LEVEL=info
@@ -61,17 +74,71 @@ write_files:
       StandardError=journal
       SyslogIdentifier=blocklet-server
       LimitNOFILE=65536
+      # Resource limits for stability
+      MemoryLimit=2G
+      CPUQuota=200%
+      TasksMax=4096
+      # Security Hardening Directives
+      ProtectSystem=full
+      PrivateTmp=true
+      NoNewPrivileges=yes
+      ProtectHome=true
+      ProtectKernelTunables=true
 
       [Install]
       WantedBy=multi-user.target
-    owner: root:root
-    permissions: '0644'
 
+  # Enhanced Nginx configuration with HTTPS and security headers
   - path: /etc/nginx/sites-available/blocklet-server
+    owner: root:root
+    permissions: "0644"
     content: |
+      # HTTP to HTTPS redirect
       server {
           listen 80;
           server_name _;
+          
+          # Allow Let's Encrypt challenges
+          location /.well-known/acme-challenge/ {
+              root /var/www/html;
+          }
+          
+          # Redirect all other traffic to HTTPS
+          location / {
+              return 301 https://$server_name$request_uri;
+          }
+      }
+
+      # Main HTTPS server block
+      server {
+          listen 443 ssl http2;
+          server_name _;
+
+          # SSL configuration (will be managed by certbot)
+          # ssl_certificate /etc/letsencrypt/live/domain/fullchain.pem;
+          # ssl_certificate_key /etc/letsencrypt/live/domain/privkey.pem;
+          
+          # Temporary self-signed certificate for initial setup
+          ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+          ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+
+          # Enhanced SSL security
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+          ssl_prefer_server_ciphers off;
+          ssl_session_cache shared:SSL:10m;
+          ssl_session_timeout 10m;
+
+          # Security headers
+          add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+          add_header X-Frame-Options "SAMEORIGIN" always;
+          add_header X-Content-Type-Options "nosniff" always;
+          add_header X-XSS-Protection "1; mode=block" always;
+          add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+          # Rate limiting
+          limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+          limit_req zone=api burst=20 nodelay;
 
           location / {
               proxy_pass http://127.0.0.1:8080;
@@ -84,18 +151,45 @@ write_files:
               proxy_set_header X-Forwarded-Proto $scheme;
               proxy_cache_bypass $http_upgrade;
               proxy_read_timeout 86400;
+              proxy_send_timeout 86400;
+              proxy_connect_timeout 60;
+          }
+
+          # Health check endpoint
+          location /health {
+              access_log off;
+              return 200 "healthy\n";
+              add_header Content-Type text/plain;
           }
       }
-    owner: root:root
-    permissions: '0644'
 
+      # Fallback HTTP server for health checks
+      server {
+          listen 8081;
+          server_name localhost;
+
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+
+  # Enhanced fail2ban configuration with custom filters
   - path: /etc/fail2ban/jail.local
+    owner: root:root
+    permissions: "0644"
     content: |
       [DEFAULT]
       bantime = 3600
       findtime = 600
       maxretry = 5
       backend = systemd
+      destemail = admin@example.com
+      sendername = Fail2Ban-ArcDeploy
+      mta = sendmail
 
       [sshd]
       enabled = true
@@ -103,12 +197,26 @@ write_files:
       filter = sshd
       logpath = /var/log/auth.log
       banaction = iptables-multiport
+      maxretry = 3
+      findtime = 300
+      bantime = 7200
 
       [nginx-http-auth]
       enabled = true
       port = http,https
       logpath = /var/log/nginx/error.log
       maxretry = 6
+      findtime = 600
+      bantime = 3600
+
+      [nginx-limit-req]
+      enabled = true
+      port = http,https
+      filter = nginx-limit-req
+      logpath = /var/log/nginx/error.log
+      maxretry = 10
+      findtime = 60
+      bantime = 300
 
       [blocklet-server]
       enabled = true
@@ -117,93 +225,327 @@ write_files:
       logpath = /opt/blocklet-server/logs/*.log
       maxretry = 5
       bantime = 3600
-    owner: root:root
-    permissions: '0644'
+      findtime = 300
 
+      [blocklet-api-limit]
+      enabled = true
+      port = 8080
+      filter = blocklet-api-limit
+      logpath = /opt/blocklet-server/logs/*.log
+      maxretry = 10
+      findtime = 60
+      bantime = 300
+
+  # Blocklet server fail2ban filter
   - path: /etc/fail2ban/filter.d/blocklet-server.conf
+    owner: root:root
+    permissions: "0644"
     content: |
       [Definition]
       failregex = ^.*\[.*\] .*Failed login attempt from <HOST>.*$
                   ^.*\[.*\] .*Unauthorized access from <HOST>.*$
                   ^.*\[.*\] .*Invalid authentication from <HOST>.*$
                   ^.*\[.*\] .*Blocked request from <HOST>.*$
+                  ^.*\[.*\] .*Authentication failed.*<HOST>.*$
+                  ^.*\[.*\] .*Access denied.*<HOST>.*$
       ignoreregex = ^.*\[.*\] .*Valid login from <HOST>.*$
-    owner: root:root
-    permissions: '0644'
+                    ^.*\[.*\] .*Successful authentication.*<HOST>.*$
 
+  # API rate limiting filter
+  - path: /etc/fail2ban/filter.d/blocklet-api-limit.conf
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Definition]
+      failregex = ^.*\[.*\] .*Rate limit exceeded.*<HOST>.*$
+                  ^.*\[.*\] .*Too many requests.*<HOST>.*$
+                  ^.*\[.*\] .*API limit reached.*<HOST>.*$
+      ignoreregex =
+
+  # Comprehensive health check script with multi-layer validation
   - path: /opt/blocklet-server/healthcheck.sh
+    owner: arcblock:arcblock
+    permissions: "0755"
     content: |
       #!/bin/bash
       set -euo pipefail
 
+      # Configuration
       readonly LOGFILE="/opt/blocklet-server/logs/health.log"
       readonly TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
       readonly MAX_ATTEMPTS=12
       readonly SLEEP_INTERVAL=10
+      readonly HEALTH_CHECK_URL="http://localhost:8080"
 
+      # Logging function
       log() {
           echo "[$TIMESTAMP] $1" | tee -a "$LOGFILE"
       }
 
+      # Ensure log directory exists
       mkdir -p "$(dirname "$LOGFILE")"
 
+      # Service availability check with exponential backoff
       wait_for_service() {
-          local attempts=0
-          log "INFO: Waiting for Blocklet Server to become ready..."
+          local attempt=1
+          local base_sleep=5
+          log "INFO: Starting comprehensive health check..."
 
-          while [ $attempts -lt $MAX_ATTEMPTS ]; do
-              if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
-                  log "INFO: Blocklet Server is ready and responding"
+          while [ $attempt -le $MAX_ATTEMPTS ]; do
+              local sleep_time=$((base_sleep * attempt))
+              
+              # Check HTTP endpoint
+              if curl -sf --max-time 10 "$HEALTH_CHECK_URL" >/dev/null 2>&1; then
+                  log "INFO: HTTP endpoint is responding"
                   return 0
               fi
 
-              attempts=$((attempts + 1))
-              log "INFO: Attempt $attempts/$MAX_ATTEMPTS - waiting ${SLEEP_INTERVAL}s..."
-              sleep $SLEEP_INTERVAL
+              log "WARN: Attempt $attempt/$MAX_ATTEMPTS failed - waiting ${sleep_time}s..."
+              sleep $sleep_time
+              attempt=$((attempt + 1))
           done
 
-          log "ERROR: Blocklet Server did not become ready within $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds"
+          log "ERROR: Service did not become ready within $((MAX_ATTEMPTS * base_sleep * MAX_ATTEMPTS / 2)) seconds"
           return 1
       }
 
-      # Check systemd service
-      if systemctl is-active --quiet blocklet-server; then
-          log "INFO: Blocklet Server systemd service is active"
-      else
-          log "ERROR: Blocklet Server systemd service is not active"
-          systemctl restart blocklet-server 2>/dev/null || log "ERROR: Failed to restart service"
-          exit 1
-      fi
 
-      # Check HTTP endpoint
-      if wait_for_service; then
-          log "INFO: Blocklet Server health check passed"
-      else
-          log "ERROR: Blocklet Server health check failed"
-          exit 1
-      fi
 
-      # Check disk space
-      readonly DISK_USAGE=$(df /opt/blocklet-server | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
-      if [ "$DISK_USAGE" -gt 85 ]; then
-          log "WARN: High disk usage: ${DISK_USAGE}%"
-      else
-          log "INFO: Disk usage: ${DISK_USAGE}%"
-      fi
+      # Database check
+      check_database() {
+          local db_file="/opt/blocklet-server/data/blocklet.db"
+          if [ -f "$db_file" ]; then
+              if sqlite3 "$db_file" "SELECT 1;" >/dev/null 2>&1; then
+                  log "INFO: Database is accessible"
+                  return 0
+              else
+                  log "ERROR: Database is corrupted or inaccessible"
+                  return 1
+              fi
+          else
+              log "WARN: Database file not found (may be normal on first run)"
+              return 0
+          fi
+      }
 
-      # Check memory usage
-      readonly MEM_USAGE=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
-      if [ "$MEM_USAGE" -gt 85 ]; then
-          log "WARN: High memory usage: ${MEM_USAGE}%"
-      else
-          log "INFO: Memory usage: ${MEM_USAGE}%"
-      fi
+      # System resource checks
+      check_resources() {
+          # Disk space check
+          local disk_usage=$(df /opt/blocklet-server | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
+          if [ "$disk_usage" -gt 85 ]; then
+              log "WARN: High disk usage: ${disk_usage}%"
+          else
+              log "INFO: Disk usage: ${disk_usage}%"
+          fi
 
-      log "INFO: Health check completed successfully"
-    owner: root:root
+          # Memory usage check
+          local mem_usage=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
+          if [ "$mem_usage" -gt 85 ]; then
+              log "WARN: High memory usage: ${mem_usage}%"
+          else
+              log "INFO: Memory usage: ${mem_usage}%"
+          fi
+
+          # Load average check
+          local load_avg=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | sed 's/,//')
+          local cpu_count=$(nproc)
+          local load_threshold=$((cpu_count * 2))
+          
+          if (( $(echo "$load_avg > $load_threshold" | bc -l) )); then
+              log "WARN: High load average: $load_avg (threshold: $load_threshold)"
+          else
+              log "INFO: Load average: $load_avg"
+          fi
+      }
+
+      # Main health check execution
+      main() {
+          log "INFO: Starting comprehensive health check..."
+
+          # Check systemd service
+          if systemctl is-active --quiet blocklet-server; then
+              log "INFO: Blocklet Server systemd service is active"
+          else
+              log "ERROR: Blocklet Server systemd service is not active"
+              log "INFO: Attempting service restart..."
+              systemctl restart blocklet-server 2>/dev/null || {
+                  log "ERROR: Failed to restart service"
+                  exit 1
+              }
+              sleep 10
+          fi
+
+          # Comprehensive checks
+          local checks_passed=0
+          local total_checks=3
+
+          # HTTP endpoint check
+          if wait_for_service; then
+              checks_passed=$((checks_passed + 1))
+          fi
+
+          # Database check
+          if check_database; then
+              checks_passed=$((checks_passed + 1))
+          fi
+
+          # Resource checks (always pass, just warnings)
+          check_resources
+          checks_passed=$((checks_passed + 1))
+
+          # Final assessment
+          if [ $checks_passed -eq $total_checks ]; then
+              log "INFO: All health checks passed ($checks_passed/$total_checks)"
+              exit 0
+          else
+              log "ERROR: Health check failed ($checks_passed/$total_checks checks passed)"
+              exit 1
+          fi
+      }
+
+      # Execute main function
+      main "$@"
+
+  # Automated backup system
+  - path: /opt/blocklet-server/backup.sh
+    owner: arcblock:arcblock
     permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
 
+      # Configuration
+      readonly BACKUP_DIR="/opt/blocklet-server/backups"
+      readonly TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+      readonly BACKUP_NAME="blocklet_backup_$TIMESTAMP"
+      readonly RETENTION_DAYS=7
+      readonly LOGFILE="/opt/blocklet-server/logs/backup.log"
+
+      # Logging function
+      log() {
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOGFILE"
+      }
+
+      # Create backup directory
+      mkdir -p "$BACKUP_DIR"
+      mkdir -p "$(dirname "$LOGFILE")"
+
+      log "INFO: Starting backup process..."
+
+      # Create backup archive
+      cd /opt/blocklet-server
+      tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" \
+          --exclude="logs" \
+          --exclude="backups" \
+          --exclude="node_modules" \
+          data/ config/ || {
+          log "ERROR: Backup creation failed"
+          exit 1
+      }
+
+      log "INFO: Backup created: $BACKUP_NAME.tar.gz"
+
+      # Cleanup old backups
+      find "$BACKUP_DIR" -name "blocklet_backup_*.tar.gz" -mtime +$RETENTION_DAYS -delete || {
+          log "WARN: Backup cleanup failed"
+      }
+
+      log "INFO: Backup process completed successfully"
+
+  # System monitoring script
+  - path: /opt/blocklet-server/monitor.sh
+    owner: arcblock:arcblock
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      # Configuration
+      readonly ALERT_THRESHOLD_CPU=80
+      readonly ALERT_THRESHOLD_MEM=85
+      readonly ALERT_THRESHOLD_DISK=90
+      readonly LOGFILE="/opt/blocklet-server/logs/monitor.log"
+      readonly WEBHOOK_URL="${WEBHOOK_URL:-}"
+
+      # Logging function
+      log() {
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOGFILE"
+      }
+
+      # Send alert (webhook or email)
+      send_alert() {
+          local message="$1"
+          local severity="$2"
+          
+          log "$severity: $message"
+          
+          if [ -n "$WEBHOOK_URL" ]; then
+              curl -X POST "$WEBHOOK_URL" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"text\":\"ArcDeploy Alert [$severity]: $message\"}" \
+                  >/dev/null 2>&1 || log "WARN: Failed to send webhook alert"
+          fi
+      }
+
+      # Check system metrics
+      check_system_health() {
+          # CPU usage
+          local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | sed 's/%us,//')
+          cpu_usage=${cpu_usage%.*}
+          
+          if [ "$cpu_usage" -gt "$ALERT_THRESHOLD_CPU" ]; then
+              send_alert "High CPU usage: ${cpu_usage}%" "WARN"
+          fi
+
+          # Memory usage
+          local mem_usage=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
+          
+          if [ "$mem_usage" -gt "$ALERT_THRESHOLD_MEM" ]; then
+              send_alert "High memory usage: ${mem_usage}%" "WARN"
+          fi
+
+          # Disk usage
+          local disk_usage=$(df /opt/blocklet-server | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
+          
+          if [ "$disk_usage" -gt "$ALERT_THRESHOLD_DISK" ]; then
+              send_alert "High disk usage: ${disk_usage}%" "CRITICAL"
+          fi
+
+          # Service status
+          if ! systemctl is-active --quiet blocklet-server; then
+              send_alert "Blocklet Server service is not running" "CRITICAL"
+          elif ! systemctl is-active --quiet nginx; then
+              send_alert "Nginx service is not running" "CRITICAL"
+          fi
+      }
+
+      # Main execution
+      mkdir -p "$(dirname "$LOGFILE")"
+      check_system_health
+      log "INFO: System health check completed"
+
+  # Logrotate configuration
+  - path: /etc/logrotate.d/blocklet-server
+    owner: root:root
+    permissions: "0644"
+    content: |
+      /opt/blocklet-server/logs/*.log {
+          daily
+          missingok
+          rotate 30
+          compress
+          delaycompress
+          notifempty
+          create 644 arcblock arcblock
+          postrotate
+              systemctl reload blocklet-server > /dev/null 2>&1 || true
+          endscript
+      }
+
+  # SSH hardening configuration
   - path: /tmp/ssh-config.txt
+    owner: root:root
+    permissions: "0644"
     content: |
       Port 2222
       Protocol 2
@@ -232,10 +574,31 @@ write_files:
       Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
       MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
       HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,rsa-sha2-256,rsa-sha2-512
-    owner: root:root
-    permissions: '0644'
+      # Additional hardening
+      Banner /etc/ssh/banner
+      UseDNS no
+      PermitUserEnvironment no
+      Compression no
 
+  # SSH banner
+  - path: /etc/ssh/banner
+    owner: root:root
+    permissions: "0644"
+    content: |
+      ********************************************************************************
+      *                                                                              *
+      *                            ArcDeploy Server                                  *
+      *                                                                              *
+      *  This system is for authorized users only. All activities are logged and    *
+      *  monitored. Unauthorized access is strictly prohibited and will be          *
+      *  prosecuted to the full extent of the law.                                  *
+      *                                                                              *
+      ********************************************************************************
+
+  # System limits configuration
   - path: /tmp/limits-config.txt
+    owner: root:root
+    permissions: "0644"
     content: |
       arcblock soft nofile 65536
       arcblock hard nofile 65536
@@ -243,17 +606,24 @@ write_files:
       arcblock hard nproc 32768
       * soft core 0
       * hard core 0
-    owner: root:root
-    permissions: '0644'
+      # Additional limits for stability
+      arcblock soft memlock unlimited
+      arcblock hard memlock unlimited
 
+  # Enhanced sysctl configuration with security hardening
   - path: /tmp/sysctl-config.txt
+    owner: root:root
+    permissions: "0644"
     content: |
+      # Network performance tuning
       net.core.rmem_max = 134217728
       net.core.wmem_max = 134217728
       net.ipv4.tcp_rmem = 4096 65536 134217728
       net.ipv4.tcp_wmem = 4096 65536 134217728
       net.core.netdev_max_backlog = 5000
       net.ipv4.ip_forward = 1
+      
+      # Security hardening
       net.ipv4.conf.all.accept_redirects = 0
       net.ipv4.conf.all.send_redirects = 0
       net.ipv4.conf.all.accept_source_route = 0
@@ -262,149 +632,393 @@ write_files:
       net.ipv4.conf.default.rp_filter = 1
       net.ipv4.icmp_echo_ignore_broadcasts = 1
       net.ipv4.icmp_ignore_bogus_error_responses = 1
-    owner: root:root
-    permissions: '0644'
+      
+      # Kernel security
+      kernel.dmesg_restrict = 1
+      kernel.kptr_restrict = 2
+      kernel.yama.ptrace_scope = 1
+      
+      # File system security
+      fs.protected_hardlinks = 1
+      fs.protected_symlinks = 1
+      fs.suid_dumpable = 0
+      
+      # Memory management
+      vm.mmap_min_addr = 65536
+      vm.swappiness = 10
 
+  # SSL certificate automation script
+  - path: /opt/blocklet-server/ssl-setup.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      DOMAIN="${1:-localhost}"
+      EMAIL="${2:-admin@${DOMAIN}}"
+
+      if [[ "$DOMAIN" != "localhost" && "$DOMAIN" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$ ]]; then
+          echo "Setting up SSL certificate for domain: $DOMAIN"
+          
+          # Install certbot if not present
+          if ! command -v certbot &> /dev/null; then
+              snap install core; snap refresh core
+              snap install --classic certbot
+              ln -s /snap/bin/certbot /usr/bin/certbot
+          fi
+          
+          # Get certificate
+          certbot --nginx -d "$DOMAIN" --email "$EMAIL" --agree-tos --non-interactive
+          
+          # Setup auto-renewal
+          echo "0 12 * * * /usr/bin/certbot renew --quiet" | crontab -
+          echo "SSL certificate setup completed for $DOMAIN"
+      else
+          echo "Using self-signed certificate for localhost/IP access"
+          echo "To setup proper SSL, run: sudo /opt/blocklet-server/ssl-setup.sh your-domain.com your-email@domain.com"
+      fi
+
+# Runtime commands
 runcmd:
-  - mkdir -p /opt/blocklet-server/{bin,data,config,logs}
+  # Create comprehensive directory structure
+  - mkdir -p /opt/blocklet-server/{bin,data,config,logs,backups}
+  - mkdir -p /var/www/html/.well-known/acme-challenge
   - chown -R arcblock:arcblock /opt/blocklet-server
   - chmod 755 /opt/blocklet-server
 
-  # Install Node.js LTS
-  - curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
-  - bash /tmp/nodesource_setup.sh
-  - apt-get install -y nodejs
+  # SSH key validation and warning
+  - |
+    if grep -q "ReplaceWithYourActualEd25519PublicKey" /home/arcblock/.ssh/authorized_keys 2>/dev/null; then
+      echo "⚠️  WARNING: Default SSH key detected! Please update before production use!"
+      echo "This is a security risk - replace the placeholder key immediately."
+    fi
 
-  # Install Blocklet CLI globally
-  - npm install -g @blocklet/cli || { echo "Failed to install @blocklet/cli"; exit 1; }
-  - which blocklet || { echo "Blocklet CLI not found in PATH"; exit 1; }
+  # Install Node.js LTS with comprehensive error handling
+  - |
+    echo "Installing Node.js LTS..."
+    curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+    if ! bash /tmp/nodesource_setup.sh; then
+      echo "ERROR: Failed to setup Node.js repository"
+      exit 1
+    fi
+    if ! apt-get install -y nodejs; then
+      echo "ERROR: Failed to install Node.js"
+      exit 1
+    fi
 
-  # Configure Redis
-  - systemctl enable redis-server
-  - systemctl start redis-server
+  # Install Blocklet CLI with retry logic
+  - |
+    echo "Installing Blocklet CLI..."
+    max_attempts=3
+    attempt=1
+    while [ $attempt -le $max_attempts ]; do
+      if npm install -g @blocklet/cli; then
+        echo "Blocklet CLI installed successfully"
+        break
+      else
+        echo "Attempt $attempt failed, retrying..."
+        attempt=$((attempt + 1))
+        sleep 10
+      fi
+    done
+    
+    if [ $attempt -gt $max_attempts ]; then
+      echo "ERROR: Failed to install @blocklet/cli after $max_attempts attempts"
+      exit 1
+    fi
+    
+    # Verify installation
+    if ! which blocklet >/dev/null 2>&1; then
+      echo "ERROR: Blocklet CLI not found in PATH"
+      exit 1
+    fi
 
-  # Configure Nginx
-  - rm -f /etc/nginx/sites-enabled/default
-  - ln -sf /etc/nginx/sites-available/blocklet-server /etc/nginx/sites-enabled/
-  - nginx -t
-  - systemctl enable nginx
-  - systemctl start nginx
 
-  # Initialize Blocklet Server
-  - sudo -u arcblock blocklet server init /opt/blocklet-server || echo "Server init failed, using manual setup"
-  - sudo -u arcblock mkdir -p /opt/blocklet-server/{bin,data,config,logs}
-  - sudo -u arcblock blocklet server config set dataDir /opt/blocklet-server/data || true
-  - sudo -u arcblock blocklet server config set port 8080 || true
 
-  # Setup firewall
-  - ufw --force reset
-  - ufw default deny incoming
-  - ufw default allow outgoing
-  - ufw allow 2222/tcp comment 'SSH'
-  - ufw allow 8080/tcp comment 'Blocklet Server HTTP'
-  - ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
-  - ufw allow 80/tcp comment 'HTTP'
-  - ufw allow 443/tcp comment 'HTTPS'
-  - ufw --force enable
+  # Configure Nginx with enhanced security
+  - |
+    echo "Configuring Nginx..."
+    # Remove default site
+    rm -f /etc/nginx/sites-enabled/default
+    
+    # Enable our site
+    ln -sf /etc/nginx/sites-available/blocklet-server /etc/nginx/sites-enabled/
+    
+    # Test configuration
+    if ! nginx -t; then
+      echo "ERROR: Nginx configuration test failed"
+      exit 1
+    fi
+    
+    systemctl enable nginx
+    systemctl start nginx
 
-  # Configure SSH hardening
-  - cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-  - cp /tmp/ssh-config.txt /etc/ssh/sshd_config
+  # Initialize Blocklet Server with enhanced error handling
+  - |
+    echo "Initializing Blocklet Server..."
+    sudo -u arcblock mkdir -p /opt/blocklet-server/{data,config,logs}
+    
+    # Initialize with proper error handling
+    if sudo -u arcblock /usr/local/bin/blocklet server init /opt/blocklet-server --skip-existing; then
+      echo "Blocklet Server initialized successfully"
+    else
+      echo "ERROR: Blocklet Server initialization failed"
+      exit 1
+    fi
+    
+    # Configure Blocklet Server
+    sudo -u arcblock /usr/local/bin/blocklet server config set dataDir /opt/blocklet-server/data || true
+    sudo -u arcblock /usr/local/bin/blocklet server config set port 8080 || true
 
-  # Configure fail2ban
-  - systemctl enable fail2ban
-  - systemctl start fail2ban
+  # Create dedicated service user and set precise permissions
+  - |
+    echo "Creating dedicated service user and setting permissions..."
+    # Create the system user
+    useradd -r -s /bin/false -d /opt/blocklet-server -c "Blocklet Service User" blockletd
 
-  # Set up system limits
-  - cat /tmp/limits-config.txt >> /etc/security/limits.conf
+    # Grant ownership of ONLY data and config dirs to the service user
+    # The administrative 'arcblock' user retains ownership of the parent folder,
+    # scripts, logs, and backups for management purposes.
+    chown -R blockletd:blockletd /opt/blocklet-server/data
+    chown -R blockletd:blockletd /opt/blocklet-server/config
+    echo "Permissions set for blockletd user."
 
-  # Configure sysctl
-  - cat /tmp/sysctl-config.txt >> /etc/sysctl.conf
-  - sysctl -p
+  # Setup enhanced firewall with rate limiting
+  - |
+    echo "Configuring firewall..."
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    
+    # SSH with rate limiting
+    ufw limit 2222/tcp comment 'SSH with rate limiting'
+    
+    # HTTP/HTTPS services
+    ufw allow 80/tcp comment 'HTTP'
+    ufw allow 443/tcp comment 'HTTPS'
+    ufw allow from 127.0.0.1 to any port 8080 proto tcp comment 'Blocklet Server Local'
+    ufw allow from 127.0.0.1 to any port 8081 proto tcp comment 'Health Check Local'
 
-  # Setup cron job for health monitoring
-  - echo "*/5 * * * * /opt/blocklet-server/healthcheck.sh >/dev/null 2>&1" | sudo -u arcblock crontab -
+    
+    # Enable firewall
+    ufw --force enable
+    
+    # Verify firewall status
+    ufw status verbose
 
-  # Set proper ownership for healthcheck script
-  - chown arcblock:arcblock /opt/blocklet-server/healthcheck.sh
+  # SSH hardening with backup
+  - |
+    echo "Hardening SSH configuration..."
+    cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%Y%m%d_%H%M%S)
+    cp /tmp/ssh-config.txt /etc/ssh/sshd_config
+    
+    # Test SSH configuration
+    if ! sshd -t; then
+      echo "ERROR: SSH configuration test failed, restoring backup"
+      cp /etc/ssh/sshd_config.backup.* /etc/ssh/sshd_config
+      exit 1
+    fi
+    
+    # Reload SSH (not restart to avoid disconnection)
+    systemctl reload sshd
+
+  # Configure fail2ban with custom rules
+  - |
+    echo "Configuring fail2ban..."
+    systemctl enable fail2ban
+    systemctl start fail2ban
+    
+    # Wait for fail2ban to start
+    sleep 5
+    
+    # Verify fail2ban is running
+    if ! systemctl is-active --quiet fail2ban; then
+      echo "ERROR: Fail2ban failed to start"
+      exit 1
+    fi
+
+  # Apply system limits and kernel parameters
+  - |
+    echo "Applying system optimizations..."
+    cat /tmp/limits-config.txt >> /etc/security/limits.conf
+    cat /tmp/sysctl-config.txt >> /etc/sysctl.conf
+    sysctl -p
+
+  # Setup comprehensive monitoring and backup
+  - |
+    echo "Setting up monitoring and backup..."
+    # Health check every 5 minutes
+    echo "*/5 * * * * /opt/blocklet-server/healthcheck.sh >/dev/null 2>&1" | crontab -u arcblock -
+    
+    # Backup every day at 2 AM
+    echo "0 2 * * * /opt/blocklet-server/backup.sh >/dev/null 2>&1" | crontab -u arcblock -
+    
+    # System monitoring every 15 minutes
+    echo "*/15 * * * * /opt/blocklet-server/monitor.sh >/dev/null 2>&1" | crontab -u arcblock -
+    
+    # Verify cron jobs
+    crontab -u arcblock -l
 
   # Enable and start Blocklet Server service
-  - systemctl daemon-reload
-  - systemctl enable blocklet-server
-  - systemctl start blocklet-server
-
-  # Wait for service to be ready
-  - sleep 30
   - |
-    echo "Waiting for Blocklet Server to become ready..."
-    attempts=0
-    max_attempts=24
+    echo "Starting Blocklet Server service..."
+    systemctl daemon-reload
+    systemctl enable blocklet-server
+    systemctl start blocklet-server
+
+  # Enhanced service readiness check with comprehensive monitoring
+  - |
+    echo "Performing comprehensive startup verification..."
     
-    while [ $attempts -lt $max_attempts ]; do
-        if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
-            echo "Blocklet Server is ready and responding!"
-            break
-        fi
+    # Function for exponential backoff
+    wait_for_service_with_backoff() {
+        local service_name="$1"
+        local check_command="$2"
+        local max_attempts=12
+        local attempt=1
+        local base_sleep=5
         
-        attempts=$((attempts + 1))
-        echo "Attempt $attempts/$max_attempts - waiting 15 seconds..."
-        sleep 15
+        echo "Waiting for $service_name to become ready..."
         
-        if ! systemctl is-active --quiet blocklet-server; then
-            echo "Service stopped unexpectedly, restarting..."
-            systemctl restart blocklet-server
+        while [ $attempt -le $max_attempts ]; do
+            local sleep_time=$((base_sleep * attempt))
+            
+            if eval "$check_command" >/dev/null 2>&1; then
+                echo "$service_name is ready!"
+                return 0
+            fi
+            
+            echo "Attempt $attempt/$max_attempts for $service_name - waiting ${sleep_time}s..."
+            
+            # Check if service is running, restart if needed
+            if [ "$service_name" = "blocklet-server" ]; then
+                if ! systemctl is-active --quiet blocklet-server; then
+                    echo "Service stopped, restarting..."
+                    systemctl restart blocklet-server
+                    sleep 5
+                fi
+            fi
+            
+            sleep $sleep_time
+            attempt=$((attempt + 1))
+        done
+        
+        echo "ERROR: $service_name did not become ready within expected time"
+        return 1
+    }
+    
+    # Wait for Blocklet Server to be ready
+    if wait_for_service_with_backoff "Blocklet Server" "curl -sf --max-time 10 http://localhost:8080"; then
+        echo "✅ Blocklet Server is ready and responding!"
+    else
+        echo "⚠️ WARNING: Blocklet Server readiness check failed"
+        echo "Check logs: journalctl -u blocklet-server --no-pager"
+    fi
+
+  # System cleanup and final verification
+  - |
+    echo "Performing system cleanup..."
+    apt-get autoremove -y
+    apt-get autoclean
+    
+    # Clean temporary files
+    rm -f /tmp/ssh-config.txt /tmp/limits-config.txt /tmp/sysctl-config.txt /tmp/nodesource_setup.sh
+    
+    echo "=== Final System Verification ==="
+    
+    # Check critical services
+    services=("blocklet-server" "nginx" "fail2ban")
+    for service in "${services[@]}"; do
+        if systemctl is-active --quiet "$service"; then
+            echo "✅ $service: RUNNING"
+        else
+            echo "❌ $service: NOT RUNNING"
         fi
     done
     
-    if [ $attempts -eq $max_attempts ]; then
-        echo "Warning: Blocklet Server did not become ready within expected time"
-        echo "Check logs with: journalctl -u blocklet-server --no-pager"
+    # Check firewall
+    if ufw status | grep -q "Status: active"; then
+        echo "✅ UFW Firewall: ACTIVE"
+    else
+        echo "❌ UFW Firewall: INACTIVE"
     fi
+    
+    echo "💾 Disk Usage: $(df -h /opt/blocklet-server | tail -1)"
+    echo "🧠 Memory Usage: $(free -h | grep Mem)"
 
-  # Final system cleanup
-  - apt-get autoremove -y
-  - apt-get autoclean
+  # Create installation completion marker
+  - |
+    cat > /opt/blocklet-server/.installation-complete << EOF
+    ArcDeploy Installation Complete
+    Timestamp: $(date)
+    Version: 2.0
+    Hostname: $(hostname)
+    IP: $(hostname -I | awk '{print $1}')
+    
+    Services Status:
+    - Blocklet Server: $(systemctl is-active blocklet-server)
+    - Nginx: $(systemctl is-active nginx)
+    - Fail2ban: $(systemctl is-active fail2ban)
+    EOF
+    
+    chown arcblock:arcblock /opt/blocklet-server/.installation-complete
+    
+    echo "=== ArcDeploy Installation Complete ==="
 
-  # Clean up temporary files
-  - rm -f /tmp/ssh-config.txt /tmp/limits-config.txt /tmp/sysctl-config.txt /tmp/nodesource_setup.sh
-
-  # Final verification
-  - systemctl is-active --quiet blocklet-server || echo "WARNING Blocklet Server service is not active"
-  - systemctl is-active --quiet nginx || echo "WARNING Nginx is not active"
-  - systemctl is-active --quiet redis-server || echo "WARNING Redis is not active"
-
-  # Create initialization marker
-  - touch /opt/blocklet-server/.native-install-complete
-  - chown arcblock:arcblock /opt/blocklet-server/.native-install-complete
-
-  # Restart SSH to apply new configuration
-  - systemctl restart ssh
-
+# Final system configuration
 timezone: UTC
 hostname: blocklet-server
 package_reboot_if_required: false
 
 final_message: |
-  ArcDeploy: Blocklet Server Native Installation Complete!
-  
-  Access Information:
+  🚀 ArcDeploy: Enhanced Blocklet Server Installation Complete!
+
+  🔗 Access Information:
   - SSH: ssh -p 2222 arcblock@YOUR_SERVER_IP
-  - Web Interface: http://YOUR_SERVER_IP:8080
-  - Secure Web Interface: https://YOUR_SERVER_IP:8443
-  - Nginx Proxy: http://YOUR_SERVER_IP (port 80)
-  - Service Status: systemctl status blocklet-server
-  - Health Check: /opt/blocklet-server/healthcheck.sh
+  - Web Interface: http://YOUR_SERVER_IP (via Nginx proxy)
+  - Secure Web Interface: https://YOUR_SERVER_IP (via Nginx proxy)
+  - Health Check: Internal monitoring only (localhost access)
   
-  Security Features:
-  - SSH hardened (key-only auth, port 2222)
-  - UFW firewall enabled
-  - Fail2ban protection active
-  - Nginx reverse proxy
-  - Redis backend
-  
-  Monitoring:
+  ⚠️  Direct application ports (8080, 8081, 8443) are now restricted to localhost for security.
+  All public access is routed through the hardened Nginx reverse proxy.
+
+  🔒 Enhanced Security Features:
+  - SSH hardened (Ed25519 keys only, port 2222)
+  - Privilege isolation (service runs as dedicated blockletd user)
+  - Network segmentation (app ports restricted to localhost)
+  - Systemd process sandboxing (filesystem/kernel protection)
+  - UFW firewall with rate limiting
+  - Fail2ban protection with custom rules
+  - Nginx reverse proxy with security headers
+  - System hardening applied
+  - Granular permissions (service user owns only data/config directories)
+
+  📊 Monitoring & Maintenance:
   - Health checks: every 5 minutes
-  - System logs: journalctl -u blocklet-server -f
+  - System monitoring: every 15 minutes  
+  - Automated backups: daily at 2 AM
+  - Log rotation: configured
+  - Service logs: journalctl -u blocklet-server -f
   - Nginx logs: tail -f /var/log/nginx/access.log
-  
-  For support: https://github.com/Pocklabs/ArcDeploy
+  - Health check script: /opt/blocklet-server/healthcheck.sh
+
+  🛠️ Management Commands:
+  - Check service status: systemctl status blocklet-server
+  - View logs: journalctl -u blocklet-server
+  - Manual backup: /opt/blocklet-server/backup.sh
+  - Health check: /opt/blocklet-server/healthcheck.sh
+  - System monitor: /opt/blocklet-server/monitor.sh
+  - SSL setup: /opt/blocklet-server/ssl-setup.sh your-domain.com
+
+  ⚠️ Important Notes:
+  - Update SSH key if using default placeholder
+  - Setup SSL certificate for production use
+  - Configure webhook URL for monitoring alerts
+  - Review firewall rules for your specific needs
+
+  📚 Documentation: https://github.com/Pocklabs/ArcDeploy
+  🐛 Issues: https://github.com/Pocklabs/ArcDeploy/issues
+  💬 Support: https://github.com/Pocklabs/ArcDeploy/discussions
+
+  System is ready for production use! 🎉

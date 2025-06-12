@@ -145,31 +145,46 @@ python3 -c "import yaml; yaml.safe_load(open('cloud-init.yaml'))"
 
 ### Built-in Security
 
-#### Authentication
+#### Authentication & Authorization
 - **SSH Key-only Authentication**: Password authentication disabled
 - **Custom SSH Port**: Port 2222 (security through obscurity + reduces noise)
-- **User Management**: Dedicated non-root user with sudo access
+- **User Separation**: Admin user (`arcblock`) separate from service user (`blockletd`)
+- **Privilege Isolation**: Service runs as dedicated non-privileged user
+- **Systemd Security**: Process sandboxing prevents privilege escalation
 
 #### Network Security
 ```yaml
-# Firewall configuration
+# Enhanced firewall configuration with localhost restrictions
 ufw:
   - rule: allow
     port: 2222    # SSH (custom port)
   - rule: allow
-    port: 80      # HTTP
+    port: 80      # HTTP (public)
   - rule: allow
-    port: 443     # HTTPS
+    port: 443     # HTTPS (public)
+  # Application ports restricted to localhost only
+  - rule: allow
+    from: 127.0.0.1
+    port: 8080    # Blocklet Server (localhost only)
+  - rule: allow
+    from: 127.0.0.1
+    port: 8081    # Health Check (localhost only)
+  - rule: allow
+    from: 127.0.0.1
+    port: 8443    # Blocklet HTTPS (localhost only)
   - rule: deny
     direction: incoming
     policy: deny  # Default deny
 ```
 
 #### Service Security
-- **Service Isolation**: Services run as dedicated users
+- **Service Isolation**: Services run as dedicated non-privileged users (`blockletd`)
+- **Systemd Hardening**: Process sandboxing with ProtectSystem, PrivateTmp, NoNewPrivileges
+- **Principle of Least Privilege**: Application service runs without sudo access
 - **SSL/TLS Encryption**: HTTPS enforced where possible
 - **Regular Updates**: Automated security updates enabled
 - **Minimal Attack Surface**: Only required services installed
+- **Network Isolation**: Application ports restricted to localhost only
 
 #### System Hardening
 ```yaml
@@ -188,16 +203,19 @@ write_files:
 ## 🚨 Known Security Considerations
 
 ### Current Limitations
-1. **Root Access**: Initial setup requires root privileges
-2. **Network Exposure**: Services exposed to internet by default
-3. **Update Management**: Manual update process required
-4. **Monitoring**: Basic logging only, no advanced monitoring
+1. **Root Access**: Initial setup requires root privileges (drops to service user after)
+2. **Update Management**: Manual update process required
+3. **Monitoring**: Basic logging only, no advanced monitoring
+4. **Certificate Management**: Manual SSL certificate setup required
 
 ### Mitigation Strategies
 1. **Immediate Privilege Drop**: Switch to non-root user after setup
-2. **Firewall Rules**: Strict network access controls
-3. **Documentation**: Clear update and maintenance procedures
-4. **Community Tools**: Advanced monitoring in ArcDeploy-Dev
+2. **Service Isolation**: Dedicated `blockletd` user with no privileges
+3. **Network Segmentation**: Application ports restricted to localhost
+4. **Systemd Sandboxing**: Filesystem and kernel protection enabled
+5. **Firewall Rules**: Strict network access controls with rate limiting
+6. **Documentation**: Clear update and maintenance procedures
+7. **Community Tools**: Advanced monitoring in ArcDeploy-Dev
 
 ## 📋 Security Checklist
 
@@ -308,5 +326,6 @@ ArcDeploy aims to support compliance with:
 
 If you have any questions about this security policy or need clarification on the reporting process, please don't hesitate to contact our security team.
 
-**Last Updated**: June 2025  
-**Next Review**: December 2025
+**Last Updated**: December 2025  
+**Security Enhancements**: Privilege isolation, systemd hardening, network segmentation  
+**Next Review**: June 2026

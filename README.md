@@ -33,7 +33,8 @@ Deploy a production-ready ArcBlock Blocklet Server to Hetzner Cloud in under 10 
 
 ## ✨ Features
 
-- **🔒 Security-First**: SSH hardening, firewall protection, intrusion prevention
+- **🔒 Security-First**: Privilege isolation, systemd sandboxing, network segmentation
+- **🛡️ Defense-in-Depth**: SSH hardening, firewall protection, intrusion prevention
 - **⚡ High Performance**: Native installation without container overhead
 - **🛠️ Production Ready**: Auto-monitoring, SSL support, automated updates
 - **📦 Zero Dependencies**: Single cloud-init file deployment
@@ -53,7 +54,14 @@ Deploy a production-ready ArcBlock Blocklet Server to Hetzner Cloud in under 10 
 
 ## 🛡️ Security
 
-**A+ Security Rating** - Production-ready with defense-in-depth architecture.
+**A+ Security Rating** - Production-ready with defense-in-depth architecture:
+
+- **Privilege Isolation**: Service runs as dedicated `blockletd` user (no sudo access)
+- **Systemd Hardening**: Process sandboxing with filesystem/kernel protection
+- **Network Segmentation**: Application ports restricted to localhost only
+- **Defense-in-Depth**: Multi-layer security controls and monitoring
+
+**[→ Security Documentation](SECURITY.md)**
 
 ## 🛠️ Development
 
