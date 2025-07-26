@@ -1,87 +1,55 @@
 # ArcDeploy .gitignore
-
-# Local environment files
-.env
-.env.local
-.env.*.local
-
-# SSH keys (never commit these!)
-*.pem
-*.key
-id_rsa*
-id_ed25519*
-*.pub
+# Clean production repository - minimal ignores
 
 # Temporary files
 *.tmp
 *.temp
-*.log
-*.bak
-*.swp
-*.swo
-*~
-
-# OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Editor files
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
-.vim/
-.nvim/
+*.swp
+*.swo
+*~
 
-# Cloud-init customized files
-my-cloud-init.yaml
-custom-cloud-init.yaml
-*-customized.yaml
-cloud-init-*.yaml
-
-# API tokens and secrets
-*token*
-*secret*
-*credential*
-hetzner-api-token.txt
+# Log files
+*.log
 
 # Backup files
+*.bak
 *.backup
-backup/
-backups/
 
-# Test files (temporary test outputs, not framework)
-test-output-*.yaml
-test-results-*.sh
-temp-test-*
-testing-output/
-test-data/
+# Local configuration overrides
+local-config.yaml
+custom-config.yaml
 
-# Local configuration
-config.local.*
-local-config.*
+# SSH keys (safety measure)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+authorized_keys
 
-# Documentation builds
-docs/_build/
-docs/site/
+# Cloud provider credentials
+.aws/
+.gcp/
+.azure/
+hcloud.ini
+credentials.json
 
-# Archive files
-*.tar.gz
-*.zip
-*.rar
+# Personal notes
+notes.txt
+TODO.txt
+personal-*
 
-# Runtime files
-*.pid
-*.sock
+# Test outputs
+test-output/
+deployment-test/
 
-# Debug logs folder
-LOGS/
-logs/
+# Downloaded files
+downloads/
 
-# Debug log files
-Log.md
+# Deployment scripts (local development only)
+scripts/
