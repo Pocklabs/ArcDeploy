@@ -1,131 +1,78 @@
 # ArcDeploy .gitignore
-
-# Local environment files
-.env
-.env.local
-.env.*.local
-
-# SSH keys (never commit these!)
-*.pem
-*.key
-id_rsa*
-id_ed25519*
-*.pub
+# Clean production repository - minimal ignores
 
 # Temporary files
 *.tmp
 *.temp
-*.log
-*.bak
-*.swp
-*.swo
-*~
-
-# OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Editor files
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
-.vim/
-.nvim/
+*.swp
+*.swo
+*~
 
-# Cloud-init customized files
-my-cloud-init.yaml
-custom-cloud-init.yaml
-*-customized.yaml
-cloud-init-*.yaml
-
-# API tokens and secrets
-*token*
-*secret*
-*credential*
-hetzner-api-token.txt
+# Log files
+*.log
 
 # Backup files
+*.bak
 *.backup
-backup/
-backups/
 
-# Test files
-test-*.yaml
-test-*.sh
-testing/
+# Local configuration overrides
+local-config.yaml
+custom-config.yaml
 
-# Local configuration
-config.local.*
-local-config.*
+# SSH keys (safety measure)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+authorized_keys
 
-# Documentation builds
-docs/_build/
-docs/site/
+# Cloud provider credentials
+.aws/
+.gcp/
+.azure/
+hcloud.ini
+credentials.json
 
-# Archive files
-*.tar.gz
-*.zip
-*.rar
+# Personal notes
+notes.txt
+TODO.txt
+personal-*
 
-# Runtime files
-*.pid
-*.sock
+# Test outputs
+test-output/
+deployment-test/
 
-# Debug logs folder
-LOGS/
-logs/
+# Downloaded files
+downloads/
 
-# Debug log files
-Log.md
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Development and Debug Tools (for ArcDeploy-Dev repo)
-**/debug*.sh
-**/test_*.sh
-**/*_SUMMARY.md
-**/*_UPDATE*.md
-
-# Development documentation patterns
-**/DEBUGGING_*.md
-**/IMPLEMENTATION_*.md
-**/DEV_*.md
-
-# Development directories
-dev-scripts/
-debug-tools/
-testing-tools/
-
-# Performance testing files
-benchmark_*.log
-performance_*.json
-load_test_*.txt
-
-# Temporary development files
-*.draft
-*.temp.md
-*.dev.md
-local_notes.md
-dev_notes.txt
-
-# Build artifacts
-build_logs/
-deployment_logs/
-test_results/
-coverage_reports/
-
-# Local development configs
-.dev.env
-dev-config.yaml
-local-settings.*
-
-# Reports folder
-Reports/
-
-# dev-deployment folder
-dev-deployment/
-
+# IDE artifacts
+.ropeproject/
+*.pyc

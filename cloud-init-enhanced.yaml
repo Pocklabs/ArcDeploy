@@ -1,0 +1,707 @@
+#cloud-config
+
+# Enhanced ArcDeploy Cloud-Init Configuration
+# Version: 2.0.0
+# Based on Hetzner Cloud best practices and security hardening
+
+# System configuration
+fqdn: ${HOSTNAME:-blocklet-server}.arcdeploy.local
+hostname: ${HOSTNAME:-blocklet-server}
+locale: en_US.UTF-8
+timezone: UTC
+
+# Package management
+package_update: true
+package_upgrade: true
+package_reboot_if_required: false
+
+# User configuration with enhanced security
+users:
+  - name: arcblock
+    groups: users, admin, sudo, www-data
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    # Generate password hash with: mkpasswd -m sha-512
+    # Default password: ArcDeploy2024! (CHANGE IN PRODUCTION)
+    passwd: $6$rounds=4096$J8rR5K9pL2$VXzQJK9KGHwX8ZnVf5KqR7YJ8pF3vK2sL9pR4dN6gH1zW8qT5eU9iO7uY6tR3eW2qA5sD4fG8hJ9kL0mN3pQ1r
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com
+    # Force password change on first login
+    chpasswd:
+      expire: true
+
+# Enhanced package list for production readiness
+packages:
+  # Essential system tools
+  - curl
+  - wget
+  - git
+  - unzip
+  - htop
+  - nano
+  - vim
+  - jq
+  - tree
+  - screen
+  - tmux
+
+  # Build tools
+  - build-essential
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+  # Security tools
+  - fail2ban
+  - ufw
+  - rkhunter
+  - chkrootkit
+  - lynis
+
+  # Monitoring and logging
+  - rsyslog
+  - logrotate
+  - sysstat
+  - iotop
+  - nethogs
+
+  # Network tools
+  - net-tools
+  - dnsutils
+  - traceroute
+  - nmap
+
+  # Development tools
+  - python3
+  - python3-pip
+  - nodejs
+  - npm
+
+  # Application stack
+  - nginx
+  - sqlite3
+  - redis-server
+
+  # System utilities
+  - zip
+  - p7zip-full
+  - rsync
+  - cron
+
+# Enhanced file configurations
+write_files:
+  # Enhanced SSH configuration with security hardening
+  - path: /etc/ssh/sshd_config
+    content: |
+      # Enhanced SSH configuration for ArcDeploy
+      Port 2222
+      Protocol 2
+
+      # Authentication
+      PermitRootLogin no
+      PasswordAuthentication no
+      ChallengeResponseAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+
+      # Security settings
+      MaxAuthTries 3
+      MaxSessions 10
+      MaxStartups 10:30:60
+      LoginGraceTime 60
+      StrictModes yes
+      IgnoreRhosts yes
+      HostbasedAuthentication no
+      PermitEmptyPasswords no
+
+      # Network settings
+      X11Forwarding no
+      AllowTcpForwarding no
+      AllowAgentForwarding no
+      PermitTunnel no
+      GatewayPorts no
+
+      # Session settings
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      TCPKeepAlive yes
+      UseDNS no
+
+      # User restrictions
+      AllowUsers arcblock
+      DenyUsers root
+
+      # Logging
+      SyslogFacility AUTH
+      LogLevel VERBOSE
+
+      # Ciphers and algorithms (modern, secure)
+      Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+      MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
+      KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+    owner: root:root
+    permissions: '0644'
+
+  # Enhanced fail2ban configuration
+  - path: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      bantime = 3600
+      findtime = 600
+      maxretry = 3
+      backend = systemd
+      destemail = root@localhost
+      sender = fail2ban@localhost
+      mta = sendmail
+      action = %(action_mwl)s
+
+      [sshd]
+      enabled = true
+      port = 2222
+      filter = sshd
+      logpath = /var/log/auth.log
+      banaction = iptables-multiport
+      maxretry = 3
+      bantime = 7200
+
+      [nginx-http-auth]
+      enabled = true
+      port = http,https
+      logpath = /var/log/nginx/error.log
+      maxretry = 6
+
+      [nginx-dos]
+      enabled = true
+      port = http,https
+      filter = nginx-dos
+      logpath = /var/log/nginx/access.log
+      maxretry = 200
+      findtime = 60
+      bantime = 600
+
+      [blocklet-server]
+      enabled = true
+      port = 8080,8443
+      filter = blocklet-server
+      logpath = /opt/blocklet-server/logs/*.log
+      maxretry = 5
+      bantime = 3600
+    owner: root:root
+    permissions: '0644'
+
+  # fail2ban filter for nginx DOS protection
+  - path: /etc/fail2ban/filter.d/nginx-dos.conf
+    content: |
+      [Definition]
+      failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*" 200
+      ignoreregex =
+    owner: root:root
+    permissions: '0644'
+
+  # Blocklet Server systemd service
+  - path: /etc/systemd/system/blocklet-server.service
+    content: |
+      [Unit]
+      Description=ArcBlock Blocklet Server
+      After=network-online.target redis.service nginx.service
+      Wants=network-online.target
+      Requires=redis.service
+
+      [Service]
+      Type=simple
+      User=arcblock
+      Group=arcblock
+      WorkingDirectory=/opt/blocklet-server
+      Environment=NODE_ENV=production
+      Environment=BLOCKLET_LOG_LEVEL=info
+      Environment=BLOCKLET_HOST=0.0.0.0
+      Environment=BLOCKLET_PORT=8080
+      Environment=BLOCKLET_DATA_DIR=/opt/blocklet-server/data
+      Environment=BLOCKLET_CONFIG_DIR=/opt/blocklet-server/config
+      ExecStart=/usr/local/bin/blocklet server start --config-dir /opt/blocklet-server/config
+      ExecReload=/bin/kill -HUP $MAINPID
+      Restart=always
+      RestartSec=10
+      StandardOutput=journal
+      StandardError=journal
+      SyslogIdentifier=blocklet-server
+      LimitNOFILE=65536
+
+      # Security settings
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectSystem=strict
+      ProtectHome=true
+      ReadWritePaths=/opt/blocklet-server
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    permissions: '0644'
+
+  # Enhanced Nginx configuration with security headers
+  - path: /etc/nginx/sites-available/blocklet-server
+    content: |
+      # Rate limiting
+      limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+      limit_req_zone $binary_remote_addr zone=login:10m rate=1r/s;
+
+      server {
+          listen 80;
+          server_name _;
+
+          # Security headers
+          add_header X-Frame-Options DENY;
+          add_header X-Content-Type-Options nosniff;
+          add_header X-XSS-Protection "1; mode=block";
+          add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+          add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+          # Hide server version
+          server_tokens off;
+
+          # Rate limiting
+          limit_req zone=api burst=20 nodelay;
+
+          # Main proxy configuration
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection 'upgrade';
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_cache_bypass $http_upgrade;
+              proxy_read_timeout 86400;
+              proxy_send_timeout 86400;
+
+              # Buffer settings
+              proxy_buffering on;
+              proxy_buffer_size 4k;
+              proxy_buffers 8 4k;
+          }
+
+          # Health check endpoint
+          location /health {
+              access_log off;
+              return 200 "healthy\n";
+              add_header Content-Type text/plain;
+          }
+
+          # Block access to sensitive files
+          location ~ /\. {
+              deny all;
+              access_log off;
+              log_not_found off;
+          }
+
+          # Logging
+          access_log /var/log/nginx/blocklet-access.log;
+          error_log /var/log/nginx/blocklet-error.log;
+      }
+    owner: root:root
+    permissions: '0644'
+
+  # System limits configuration
+  - path: /etc/security/limits.d/99-arcdeploy.conf
+    content: |
+      # ArcDeploy system limits
+      arcblock soft nofile 65536
+      arcblock hard nofile 65536
+      arcblock soft nproc 32768
+      arcblock hard nproc 32768
+      * soft core 0
+      * hard core 0
+    owner: root:root
+    permissions: '0644'
+
+  # Kernel parameter tuning
+  - path: /etc/sysctl.d/99-arcdeploy.conf
+    content: |
+      # Network performance tuning
+      net.core.rmem_max = 134217728
+      net.core.wmem_max = 134217728
+      net.ipv4.tcp_rmem = 4096 65536 134217728
+      net.ipv4.tcp_wmem = 4096 65536 134217728
+      net.core.netdev_max_backlog = 5000
+      net.ipv4.tcp_congestion_control = bbr
+
+      # Security hardening
+      net.ipv4.ip_forward = 0
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.default.accept_redirects = 0
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.default.send_redirects = 0
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv4.conf.default.accept_source_route = 0
+      net.ipv4.conf.all.log_martians = 1
+      net.ipv4.conf.default.log_martians = 1
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.rp_filter = 1
+      net.ipv4.icmp_echo_ignore_broadcasts = 1
+      net.ipv4.icmp_ignore_bogus_error_responses = 1
+      net.ipv4.tcp_syncookies = 1
+      net.ipv4.tcp_max_syn_backlog = 2048
+
+      # Memory management
+      vm.swappiness = 10
+      vm.dirty_ratio = 15
+      vm.dirty_background_ratio = 5
+
+      # File system
+      fs.file-max = 2097152
+      fs.inotify.max_user_watches = 524288
+    owner: root:root
+    permissions: '0644'
+
+  # Enhanced health check script
+  - path: /opt/blocklet-server/healthcheck.sh
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      # Configuration
+      readonly LOGFILE="/opt/blocklet-server/logs/health.log"
+      readonly TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+      readonly MAX_ATTEMPTS=12
+      readonly SLEEP_INTERVAL=10
+      readonly HEALTH_URL="http://localhost:8080/health"
+      readonly DISK_WARNING_THRESHOLD=80
+      readonly DISK_CRITICAL_THRESHOLD=90
+      readonly MEM_WARNING_THRESHOLD=80
+      readonly MEM_CRITICAL_THRESHOLD=90
+
+      # Logging function
+      log() {
+          echo "[$TIMESTAMP] $1" | tee -a "$LOGFILE"
+      }
+
+      # Create log directory
+      mkdir -p "$(dirname "$LOGFILE")"
+
+      # Service health check
+      check_service_health() {
+          local attempts=0
+          log "INFO: Checking Blocklet Server health..."
+
+          # Check systemd service status
+          if ! systemctl is-active --quiet blocklet-server; then
+              log "ERROR: Blocklet Server systemd service is not active"
+              systemctl restart blocklet-server 2>/dev/null || log "ERROR: Failed to restart service"
+              return 1
+          fi
+
+          # Wait for HTTP endpoint
+          while [ $attempts -lt $MAX_ATTEMPTS ]; do
+              if curl -sf --max-time 10 "$HEALTH_URL" >/dev/null 2>&1; then
+                  log "INFO: Blocklet Server is healthy and responding"
+                  return 0
+              fi
+
+              attempts=$((attempts + 1))
+              log "INFO: Health check attempt $attempts/$MAX_ATTEMPTS - waiting ${SLEEP_INTERVAL}s..."
+              sleep $SLEEP_INTERVAL
+          done
+
+          log "ERROR: Blocklet Server health check failed after $attempts attempts"
+          return 1
+      }
+
+      # System resource checks
+      check_disk_usage() {
+          local usage
+          usage=$(df /opt/blocklet-server | awk 'NR==2 {print $(NF-1)}' | sed 's/%//')
+
+          if [ "$usage" -gt $DISK_CRITICAL_THRESHOLD ]; then
+              log "CRITICAL: Disk usage critical: ${usage}%"
+              return 2
+          elif [ "$usage" -gt $DISK_WARNING_THRESHOLD ]; then
+              log "WARNING: High disk usage: ${usage}%"
+              return 1
+          else
+              log "INFO: Disk usage normal: ${usage}%"
+              return 0
+          fi
+      }
+
+      check_memory_usage() {
+          local usage
+          usage=$(free | awk 'NR==2{printf "%.0f", $3*100/$2}')
+
+          if [ "$usage" -gt $MEM_CRITICAL_THRESHOLD ]; then
+              log "CRITICAL: Memory usage critical: ${usage}%"
+              return 2
+          elif [ "$usage" -gt $MEM_WARNING_THRESHOLD ]; then
+              log "WARNING: High memory usage: ${usage}%"
+              return 1
+          else
+              log "INFO: Memory usage normal: ${usage}%"
+              return 0
+          fi
+      }
+
+      # Network connectivity check
+      check_network() {
+          if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+              log "INFO: Network connectivity OK"
+              return 0
+          else
+              log "WARNING: Network connectivity issues detected"
+              return 1
+          fi
+      }
+
+      # Main health check execution
+      main() {
+          local exit_code=0
+
+          log "INFO: Starting comprehensive health check"
+
+          # Service health
+          check_service_health || exit_code=1
+
+          # System resources
+          check_disk_usage || exit_code=1
+          check_memory_usage || exit_code=1
+          check_network || exit_code=1
+
+          # Additional checks
+          log "INFO: Load average: $(uptime | awk -F'load average:' '{print $2}')"
+          log "INFO: Active connections: $(ss -tuln | wc -l)"
+
+          if [ $exit_code -eq 0 ]; then
+              log "INFO: All health checks passed"
+          else
+              log "WARNING: Some health checks failed"
+          fi
+
+          return $exit_code
+      }
+
+      # Execute main function
+      main "$@"
+    owner: root:root
+    permissions: "0755"
+
+  # Logrotate configuration for application logs
+  - path: /etc/logrotate.d/blocklet-server
+    content: |
+      /opt/blocklet-server/logs/*.log {
+          daily
+          missingok
+          rotate 14
+          compress
+          delaycompress
+          notifempty
+          create 0644 arcblock arcblock
+          postrotate
+              systemctl reload blocklet-server || true
+          endscript
+      }
+    owner: root:root
+    permissions: '0644'
+
+  # System maintenance script
+  - path: /usr/local/bin/arcdeploy-maintenance.sh
+    content: |
+      #!/bin/bash
+      # ArcDeploy system maintenance script
+
+      echo "Starting ArcDeploy maintenance..."
+
+      # Update package lists
+      apt-get update
+
+      # Upgrade packages
+      apt-get upgrade -y
+
+      # Clean package cache
+      apt-get autoremove -y
+      apt-get autoclean
+
+      # Rotate logs
+      logrotate -f /etc/logrotate.conf
+
+      # Check system health
+      /opt/blocklet-server/healthcheck.sh
+
+      # Security scan
+      rkhunter --update
+      rkhunter --check --skip-keypress
+
+      echo "Maintenance completed at $(date)"
+    owner: root:root
+    permissions: "0755"
+
+# System commands to run during initialization
+runcmd:
+  # Create required directories
+  - mkdir -p /opt/blocklet-server/{bin,data,config,logs,backups}
+  - chown -R arcblock:arcblock /opt/blocklet-server
+  - chmod 755 /opt/blocklet-server
+
+  # Install Node.js LTS (using NodeSource)
+  - curl -fsSL https://deb.nodesource.com/setup_lts.x -o /tmp/nodesource_setup.sh
+  - bash /tmp/nodesource_setup.sh
+  - apt-get install -y nodejs
+
+  # Install Blocklet CLI globally
+  - npm install -g @blocklet/cli
+  - which blocklet || { echo "Blocklet CLI installation failed"; exit 1; }
+
+  # Configure and start Redis
+  - sed -i 's/^# maxmemory <bytes>/maxmemory 512mb/' /etc/redis/redis.conf
+  - sed -i 's/^# maxmemory-policy noeviction/maxmemory-policy allkeys-lru/' /etc/redis/redis.conf
+  - systemctl enable redis-server
+  - systemctl start redis-server
+
+  # Configure Nginx
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -sf /etc/nginx/sites-available/blocklet-server /etc/nginx/sites-enabled/
+  - nginx -t || { echo "Nginx configuration test failed"; exit 1; }
+  - systemctl enable nginx
+  - systemctl start nginx
+
+  # Setup firewall with enhanced rules
+  - ufw --force reset
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 2222/tcp comment 'SSH Enhanced'
+  - ufw allow 80/tcp comment 'HTTP'
+  - ufw allow 443/tcp comment 'HTTPS'
+  - ufw allow 8080/tcp comment 'Blocklet Server HTTP'
+  - ufw allow 8443/tcp comment 'Blocklet Server HTTPS'
+  - ufw logging on
+  - ufw --force enable
+
+  # Configure fail2ban
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+
+  # Apply system limits and kernel parameters
+  - sysctl -p /etc/sysctl.d/99-arcdeploy.conf
+
+  # Initialize Blocklet Server
+  - sudo -u arcblock blocklet server init /opt/blocklet-server || echo "Using manual server setup"
+  - sudo -u arcblock mkdir -p /opt/blocklet-server/{bin,data,config,logs,backups}
+  - sudo -u arcblock blocklet server config set dataDir /opt/blocklet-server/data || true
+  - sudo -u arcblock blocklet server config set port 8080 || true
+  - sudo -u arcblock blocklet server config set httpsPort 8443 || true
+
+  # Setup monitoring and maintenance
+  - echo "0 2 * * 0 /usr/local/bin/arcdeploy-maintenance.sh >> /var/log/maintenance.log 2>&1" | crontab -
+  - echo "*/5 * * * * /opt/blocklet-server/healthcheck.sh >/dev/null 2>&1" | sudo -u arcblock crontab -
+
+  # Enable and start Blocklet Server
+  - systemctl daemon-reload
+  - systemctl enable blocklet-server
+  - systemctl start blocklet-server
+
+  # Wait for service readiness with enhanced checking
+  - |
+    echo "Waiting for Blocklet Server to become ready..."
+    max_attempts=30
+    attempt=0
+
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -sf --max-time 10 http://localhost:8080 >/dev/null 2>&1; then
+            echo "✅ Blocklet Server is ready and responding!"
+            break
+        fi
+
+        attempt=$((attempt + 1))
+        echo "⏳ Attempt $attempt/$max_attempts - waiting 15 seconds..."
+        sleep 15
+
+        # Check service status and restart if needed
+        if ! systemctl is-active --quiet blocklet-server; then
+            echo "🔄 Service stopped unexpectedly, restarting..."
+            systemctl restart blocklet-server
+        fi
+    done
+
+    if [ $attempt -eq $max_attempts ]; then
+        echo "⚠️ Warning: Blocklet Server did not become ready within expected time"
+        echo "📋 Check logs: journalctl -u blocklet-server --no-pager -n 50"
+    fi
+
+  # Security hardening
+  - echo "Applying additional security hardening..."
+  - chmod 640 /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  # Setup log monitoring
+  - systemctl enable rsyslog
+  - systemctl start rsyslog
+
+  # Final system cleanup
+  - apt-get autoremove -y
+  - apt-get autoclean
+  - rm -f /tmp/nodesource_setup.sh
+
+  # Create installation completion marker
+  - echo "$(date): ArcDeploy Enhanced Installation Complete" > /opt/blocklet-server/.installation-complete
+  - chown arcblock:arcblock /opt/blocklet-server/.installation-complete
+
+  # Final service verification
+  - systemctl is-active --quiet blocklet-server || echo "⚠️ WARNING: Blocklet Server service is not active"
+  - systemctl is-active --quiet nginx || echo "⚠️ WARNING: Nginx is not active"
+  - systemctl is-active --quiet redis-server || echo "⚠️ WARNING: Redis is not active"
+  - systemctl is-active --quiet fail2ban || echo "⚠️ WARNING: Fail2ban is not active"
+
+# Power management
+power_state:
+  mode: reboot
+  condition: true
+  delay: "+1"
+  message: "Rebooting after ArcDeploy Enhanced installation"
+
+# Final message displayed after installation
+final_message: |
+  🎉 ArcDeploy Enhanced Installation Complete! 🎉
+
+  📊 System Information:
+  - Hostname: ${HOSTNAME:-blocklet-server}.arcdeploy.local
+  - OS: Ubuntu 22.04 LTS (Enhanced)
+  - Security: Hardened configuration applied
+
+  🔐 Access Information:
+  - SSH: ssh -p 2222 arcblock@YOUR_SERVER_IP
+  - Web Interface: http://YOUR_SERVER_IP:8080
+  - Secure Web Interface: https://YOUR_SERVER_IP:8443
+  - Nginx Proxy: http://YOUR_SERVER_IP (port 80)
+
+  🛡️ Security Features:
+  - SSH hardened (key-only auth, port 2222)
+  - UFW firewall with custom rules
+  - Fail2ban with enhanced protection
+  - System resource monitoring
+  - Automatic security updates
+
+  📈 Monitoring:
+  - Health checks: every 5 minutes
+  - System maintenance: weekly (Sunday 2 AM)
+  - Service logs: journalctl -u blocklet-server -f
+  - Nginx logs: tail -f /var/log/nginx/blocklet-*.log
+  - Health status: /opt/blocklet-server/healthcheck.sh
+
+  🔧 Management:
+  - Service status: systemctl status blocklet-server
+  - Restart service: systemctl restart blocklet-server
+  - View config: blocklet server config list
+  - Manual maintenance: /usr/local/bin/arcdeploy-maintenance.sh
+
+  📚 Support & Documentation:
+  - GitHub: https://github.com/Pocklabs/ArcDeploy
+  - Logs: /opt/blocklet-server/logs/
+  - Health: /opt/blocklet-server/logs/health.log
+
+  ⚠️ IMPORTANT: Change the default password on first login!
+
+  Happy coding with ArcDeploy Enhanced! 🚀

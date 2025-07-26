@@ -2,11 +2,11 @@
 
 **Deploy ArcBlock Blocklet Server in 10 minutes**
 
-This guide walks you through the fastest way to deploy ArcBlock Blocklet Server using ArcDeploy's cloud-init configuration on Hetzner Cloud.
+This guide walks you through the fastest way to deploy ArcBlock Blocklet Server using ArcDeploy's cloud-init configuration on any supported cloud provider.
 
 ## 📋 Prerequisites
 
-- Hetzner Cloud account
+- Cloud provider account (Hetzner, AWS, GCP, DigitalOcean, Azure, etc.)
 - SSH key pair (we'll help you create one if needed)
 - 10 minutes of your time
 
@@ -40,22 +40,20 @@ nano cloud-init.yaml
 ```
 
 Find this line in the file:
-
 ```yaml
 ssh_authorized_keys:
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithYourActualEd25519PublicKey your-email@example.com
 ```
 
 Replace the placeholder with your actual SSH public key:
-
 ```yaml
 ssh_authorized_keys:
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIYourActualPublicKeyHere your-email@example.com
 ```
 
-### Step 3: Deploy to Hetzner Cloud
+### Step 3: Deploy to Your Cloud Provider
 
-#### 🟢 Hetzner Cloud
+#### 🟢 Hetzner Cloud (Recommended)
 
 1. **Login** to [Hetzner Cloud Console](https://console.hetzner.cloud/)
 2. **Create Server**:
@@ -67,14 +65,59 @@ ssh_authorized_keys:
    - Paste the entire contents of your `cloud-init.yaml` file
 4. **Create & Start**
 
-> **Note**: While ArcDeploy works with any cloud provider that supports cloud-init, we recommend Hetzner Cloud for its simplicity, reliability, and cost-effectiveness. For other providers, simply paste the `cloud-init.yaml` content in your provider's user data or cloud config section during server creation.
+#### ☁️ AWS EC2
+
+1. **Launch Instance** in AWS Console
+2. **Choose AMI**: Ubuntu Server 22.04 LTS
+3. **Instance Type**: t3.large or higher
+4. **Configure Security Group**:
+   - SSH: Port 2222 (not 22!)
+   - HTTP: Port 8080
+   - HTTPS: Port 8443
+5. **Advanced Details** → **User Data**: Paste your `cloud-init.yaml` content
+6. **Launch**
+
+#### 🔵 Google Cloud Platform
+
+1. **Create Instance** in Compute Engine
+2. **Machine Configuration**: e2-standard-4 or higher
+3. **Boot Disk**: Ubuntu 22.04 LTS
+4. **Management** → **Automation**: Paste your `cloud-init.yaml` content
+5. **Create Firewall Rules**:
+   ```bash
+   gcloud compute firewall-rules create arcblock-ssh --allow tcp:2222
+   gcloud compute firewall-rules create arcblock-web --allow tcp:8080,tcp:8443
+   ```
+6. **Create**
+
+#### 🌊 DigitalOcean
+
+1. **Create Droplet**
+2. **Choose Image**: Ubuntu 22.04 LTS
+3. **Size**: 4GB RAM / 2 vCPUs or higher
+4. **Advanced Options** → **User Data**: Paste your `cloud-init.yaml` content
+5. **Create Droplet**
+6. **Configure Firewall** (in Networking):
+   - SSH: Port 2222
+   - HTTP: Port 8080
+   - HTTPS: Port 8443
+
+#### 🔷 Microsoft Azure
+
+1. **Create Virtual Machine** in Azure Portal
+2. **Basics**:
+   - **Image**: Ubuntu Server 22.04 LTS
+   - **Size**: Standard_B4ms or larger
+   - **Authentication**: SSH public key
+3. **Advanced** → **Custom Data**: Paste your `cloud-init.yaml` content
+4. **Create**
+5. **Configure Network Security Group** for ports 2222, 8080, 8443
 
 ### Step 4: Wait for Installation
 
 ⏱️ **Installation time**: 5-10 minutes
 
 The cloud-init process will:
-
 1. Update the system
 2. Install Node.js and dependencies
 3. Configure nginx reverse proxy
@@ -87,7 +130,6 @@ The cloud-init process will:
 Once deployment is complete (usually 5-10 minutes), connect to your server:
 
 #### SSH Access
-
 ```bash
 # Connect via SSH (note the custom port 2222)
 ssh -p 2222 arcblock@YOUR_SERVER_IP
@@ -97,7 +139,6 @@ ssh -p 2222 -i ~/.ssh/arcblock_ed25519 arcblock@YOUR_SERVER_IP
 ```
 
 #### Web Interface
-
 ```bash
 # Open in browser
 http://YOUR_SERVER_IP:8080
@@ -125,7 +166,6 @@ curl -I http://localhost:8080
 ```
 
 **Expected results:**
-
 - Cloud-init status: `done`
 - Blocklet Server: `active (running)`
 - Ports 2222, 8080, 8443 should be listening
@@ -163,12 +203,11 @@ sudo journalctl -u blocklet-server --since "1 hour ago"
 ### Issue: Can't SSH to server
 
 **Solution:**
-
 ```bash
 # Test if port 2222 is reachable
 telnet YOUR_SERVER_IP 2222
 
-# Check Hetzner Cloud firewall settings
+# Check cloud provider firewall settings
 # Ensure port 2222 is allowed from your IP
 
 # Verify SSH key is correct
@@ -178,7 +217,6 @@ ssh-keygen -l -f ~/.ssh/arcblock_ed25519.pub
 ### Issue: Web interface not accessible
 
 **Solution:**
-
 ```bash
 # Check if blocklet-server is running
 ssh -p 2222 arcblock@YOUR_SERVER_IP
@@ -194,7 +232,6 @@ sudo netstat -tlnp | grep -E "(8080|8443)"
 ### Issue: Cloud-init failed
 
 **Solution:**
-
 ```bash
 # Check cloud-init logs
 ssh -p 2222 arcblock@YOUR_SERVER_IP
@@ -207,21 +244,18 @@ sudo journalctl -u cloud-init-local -u cloud-init -u cloud-config -u cloud-final
 ## 📊 Server Requirements
 
 ### Minimum Hardware Requirements
-
 - **CPU:** 4 cores / 4 vCPUs
 - **RAM:** 8GB
 - **Storage:** 80GB SSD
 - **Network:** 1Gbps connection
 
 ### Recommended Hardware Requirements
-
 - **CPU:** 8 cores / 8 vCPUs
 - **RAM:** 16GB
 - **Storage:** 160GB SSD
 - **Network:** 1Gbps+ connection
 
 ### System Requirements
-
 - **Operating System:** Ubuntu 22.04 LTS
 - **Architecture:** x86_64 (ARM not currently supported)
 - **Cloud-Init:** Required for automated deployment
@@ -246,4 +280,4 @@ sudo journalctl -u cloud-init-local -u cloud-init -u cloud-config -u cloud-final
 
 **🎯 Total deployment time: 10 minutes or less!**
 
-**Next**: Visit the [troubleshooting guide](TROUBLESHOOTING.md) for additional help and solutions.
+**Next**: [Cloud Provider Setup Guide](cloud-providers.md) for detailed provider-specific instructions.
